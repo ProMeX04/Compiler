@@ -19,3 +19,10 @@ export interface ContextMenuProps {
   onClose: () => void;
   children: ReactNode;
 }
+
+export interface TestCase {
+  input: string;
+  expectedOutput: string;
+  actualOutput?: string;
+  passed?: boolean;
+}

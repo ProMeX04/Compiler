@@ -3,11 +3,11 @@ import React, { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { FileTab } from "@/components/FileTab";
+import { EditorHeader } from "@/components/EditorHeader";
+import { TestPanel } from "@/components/TestPanel";
 import { ContextMenu } from "@/components/ContextMenu";
-import { FileTab as FileTabType, CursorPosition } from "@/app/types/types";
+import { FileTab as FileTabType, CursorPosition, TestCase } from "@/app/types/types";
 import { FILE_EXTENSIONS } from "@/app/constants/constants";
-import { FaPlus, FaSpinner, FaPlay, FaSun, FaMoon, FaCode, FaFlask } from "react-icons/fa";
 import "@szhsin/react-menu/dist/index.css";
 import "./styles/resizable.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
@@ -19,13 +19,6 @@ import { getRuntimes, executeCode } from "@/app/services/piston";
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
 });
-
-interface TestCase {
-  input: string;
-  expectedOutput: string;
-  actualOutput?: string;  // Add actual output to track results
-  passed?: boolean;       // Add pass/fail status
-}
 
 export default function Home() {
   const [tabs, setTabs] = useState<FileTabType[]>([
@@ -46,7 +39,7 @@ export default function Home() {
     line: 1,
     column: 1,
   });
-  const { currentTheme, theme, toggleTheme } = useTheme();
+  const { currentTheme, theme } = useTheme();
   const [runtimes, setRuntimes] = useState<PistonRuntime[]>([]);
   const [testMode, setTestMode] = useState<'code' | 'test'>('code');
   const [testCases, setTestCases] = useState<TestCase[]>([
@@ -276,101 +269,28 @@ export default function Home() {
     );
   };
 
-  const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
-  };
-
   const activeFile = tabs.find((tab) => tab.id === activeTab);
 
   return (
     <div className={`flex flex-col h-screen ${currentTheme.bg} ${currentTheme.text} overflow-hidden`}>
-      <div className={`flex items-center ${currentTheme.tabBg} shadow-sm transition-all duration-200`}>
-        <div className="flex-1 flex items-center">
-          {tabs.map((tab) => (
-            <FileTab
-              key={tab.id}
-              tab={tab}
-              isActive={activeTab === tab.id}
-              onSelect={() => setActiveTab(tab.id)}
-              onRemove={() => removeTab(tab.id)}
-              onContextMenu={(e) => handleContextMenu(e, tab.id)}
-              isRenaming={renamingTabId === tab.id}
-              onRename={(newName) => updateTabName(tab.id, newName)}
-              onRenameComplete={() => setRenamingTabId(null)}
-            />
-          ))}
-          <button
-            onClick={addNewFile}
-            className={`flex items-center justify-center px-3 h-8 text-sm border-r ${currentTheme.borderColor} ${currentTheme.text} ${currentTheme.tabBg} hover:${currentTheme.tabHoverBg} transition-all duration-200`}
-          >
-            <FaPlus className="transform hover:rotate-90 transition-transform duration-200" />
-          </button>
-        </div>
-        <div className="flex items-center gap-4 px-3">
-          {/* Status Information */}
-          <div className="flex items-center gap-3 text-xs opacity-75">
-            {executionTime !== null && (
-              <span>{`Execution Time: ${executionTime}ms`}</span>
-            )}
-          </div>
+      <EditorHeader
+        tabs={tabs}
+        activeTab={activeTab}
+        testMode={testMode}
+        isCompiling={isCompiling}
+        executionTime={executionTime}
+        onAddFile={addNewFile}
+        onSelectTab={setActiveTab}
+        onRemoveTab={removeTab}
+        onContextMenu={handleContextMenu}
+        onRenameTab={updateTabName}
+        onTestModeChange={setTestMode}
+        onCompileAndRun={compileAndRun}
+        renamingTabId={renamingTabId}
+        onRenameComplete={() => setRenamingTabId(null)}
+      />
 
-          {/* Mode Toggle */}
-          {/* Mode Toggle */}
-          <div className="flex items-center rounded-lg border border-zinc-600 overflow-hidden">
-            <button
-              onClick={() => setTestMode('code')}
-              className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
-                testMode === 'code' 
-                  ? 'bg-zinc-700 text-white' 
-                  : 'hover:bg-zinc-800'
-              }`}
-            >
-              <FaCode size={11} />
-              <span>Code</span>
-            </button>
-            <button
-              onClick={() => setTestMode('test')}
-              className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
-                testMode === 'test' 
-                  ? 'bg-zinc-700 text-white' 
-                  : 'hover:bg-zinc-800'
-              }`}
-            >
-              <FaFlask size={11} />
-              <span>Test</span>
-            </button>
-          </div>
-          
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className={`flex items-center gap-1.5 text-xs hover:${theme === 'light' ? 'text-gray-800' : 'text-zinc-300'} transition-all duration-200 opacity-75 hover:opacity-100`}
-          >
-            {theme === "dark" ? <FaSun size={11} /> : <FaMoon size={11} />}
-            <span className="capitalize">{theme}</span>
-          </button>
-
-          {/* Run Button */}
-          <button
-            onClick={compileAndRun}
-            disabled={isCompiling || !activeFile}
-            title="Run (Ctrl+B)"
-            className={`p-2 rounded-lg text-sm transition-all duration-200 flex items-center justify-center border border-transparent ${
-              isCompiling
-                ? 'text-gray-500 cursor-not-allowed'
-                : 'text-blue-500 hover:border-blue-500'
-            }`}
-          >
-            {isCompiling ? (
-              <FaSpinner className="animate-spin h-4 w-4" />
-            ) : (
-              <FaPlay className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-      </div>
-      <PanelGroup direction="horizontal" className="flex-1 overflow-auto" style={{ scrollBehavior: 'smooth' }}>
+      <PanelGroup direction="horizontal" className="flex-1 overflow-auto">
         <Panel defaultSize={50} minSize={20}>
           <MonacoEditor
             height="100%"
@@ -420,117 +340,12 @@ export default function Home() {
         <ResizeHandle />
         <Panel defaultSize={50} minSize={20}>
           {testMode === 'test' ? (
-            <div className={`h-full overflow-auto p-4 ${currentTheme.panelBg}`}>
-              <div className="flex flex-col gap-4">
-                {/* Add test results summary */}
-                <div className={`p-2 rounded ${
-                  testCases.some(tc => tc.passed !== undefined)
-                    ? theme === 'light' 
-                      ? 'bg-gray-100 border border-gray-200' 
-                      : 'bg-zinc-800/50 border border-zinc-700'
-                    : ''
-                }`}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium">Test Cases</h3>
-                    <div className="flex items-center gap-4">
-                      {testCases.some(tc => tc.passed !== undefined) && (
-                        <span className="text-xs opacity-75">
-                          Passed: {testCases.filter(tc => tc.passed).length}/{testCases.length}
-                        </span>
-                      )}
-                      <button
-                        onClick={addTestCase}
-                        className={`text-xs px-2 py-1 rounded border ${
-                          theme === 'light' 
-                            ? 'border-gray-300 hover:bg-gray-100' 
-                            : 'border-zinc-600 hover:bg-zinc-700'
-                        } transition-colors`}
-                      >
-                        Add Test Case
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Existing test cases list */}
-                <div className="space-y-4">
-                  {testCases.map((tc, index) => (
-                    <div 
-                      key={index} 
-                      className={`mb-4 p-3 border rounded transition-colors ${
-                        tc.passed === undefined
-                          ? theme === 'light' ? 'border-gray-300 bg-gray-50' : 'border-zinc-700 bg-zinc-900'
-                          : tc.passed
-                            ? theme === 'light' ? 'border-green-500/30 bg-green-50' : 'border-green-500/30 bg-green-950'
-                            : theme === 'light' ? 'border-red-500/30 bg-red-50' : 'border-red-500/30 bg-red-950'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">Test Case #{index + 1}</span>
-                          {tc.passed !== undefined && (
-                            <span className={`text-xs ${tc.passed ? 'text-green-400' : 'text-red-400'}`}>
-                              {tc.passed ? '✓ Passed' : '✗ Failed'}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => removeTestCase(index)}
-                          className="text-xs text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <label className="block text-xs mb-1 opacity-70">Input:</label>
-                          <textarea
-                            value={tc.input}
-                            onChange={(e) => {
-                              handleTestCaseChange(index, 'input', e.target.value);
-                              autoResize(e);
-                            }}
-                            onFocus={(e) => autoResize(e)}
-                            className={`w-full min-h-[32px] max-h-[200px] rounded p-2 text-xs overflow-y-hidden resize-none ${
-                              theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-800/80 border border-zinc-700'
-                            }`}
-                            style={{ height: 'auto' }}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs mb-1 opacity-70">Expected Output:</label>
-                          <textarea
-                            value={tc.expectedOutput}
-                            onChange={(e) => {
-                              handleTestCaseChange(index, 'expectedOutput', e.target.value);
-                              autoResize(e);
-                            }}
-                            onFocus={(e) => autoResize(e)}
-                            className={`w-full min-h-[32px] max-h-[200px] rounded p-2 text-xs overflow-y-hidden resize-none ${
-                              theme === 'light' ? 'bg-white border border-gray-200' : 'bg-zinc-800/80 border border-zinc-700'
-                            }`}
-                            style={{ height: 'auto' }}
-                          />
-                        </div>
-                        {tc.actualOutput !== undefined && (
-                          <div>
-                            <label className="block text-xs mb-1 opacity-70">Actual Output:</label>
-                            <textarea
-                              value={tc.actualOutput}
-                              readOnly
-                              className={`w-full min-h-[32px] max-h-[200px] rounded p-2 text-xs overflow-y-auto resize-none ${
-                                theme === 'light' ? 'bg-gray-100 border border-gray-200' : 'bg-zinc-800/50'
-                              }`}
-                              style={{ height: 'auto' }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <TestPanel
+              testCases={testCases}
+              onTestCaseChange={handleTestCaseChange}
+              onAddTestCase={addTestCase}
+              onRemoveTestCase={removeTestCase}
+            />
           ) : (
             <PanelGroup direction="vertical" className="h-full overflow-auto">
               <Panel defaultSize={40} minSize={5}>
