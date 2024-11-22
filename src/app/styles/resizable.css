@@ -1,0 +1,28 @@
+[data-panel-group-direction="horizontal"] > [data-panel-resize-handle] {
+  width: 1px;
+  cursor: col-resize;
+  background-color: rgba(59, 130, 246, 1); /* Màu xanh luôn hiển thị */
+}
+
+[data-panel-group-direction="vertical"] > [data-panel-resize-handle] {
+  height: 2px;
+  cursor: row-resize;
+  background-color: rgba(59, 130, 246, 1); /* Màu xanh luôn hiển thị */
+}
+
+[data-panel] {
+  height: 100%;
+}
+
+[data-resize-handle] {
+  background-color: rgba(59, 130, 246, 1); /* Màu xanh luôn hiển thị */
+  transition: background-color 0.2s;
+}
+
+[data-resize-handle]:hover {
+  background-color: rgba(37, 99, 235, 1); /* Màu xanh đậm hơn khi hover */
+}
+
+[data-resize-handle][data-resize-handle-active] {
+  background-color: rgba(37, 99, 235, 1); /* Màu xanh đậm hơn khi active */
+}
