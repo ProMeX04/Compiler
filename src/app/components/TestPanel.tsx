@@ -10,6 +10,7 @@ interface TestPanelProps {
   ) => void;
   onAddTestCase: () => void;
   onRemoveTestCase: (index: number) => void;
+  // Add any additional props needed for parameterization
 }
 
 const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -22,6 +23,7 @@ export function TestPanel({
   onTestCaseChange,
   onAddTestCase,
   onRemoveTestCase,
+  // ...other props...
 }: TestPanelProps) {
   const { theme } = useTheme();
 

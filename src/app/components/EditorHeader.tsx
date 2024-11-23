@@ -28,9 +28,10 @@ interface EditorHeaderProps {
   onCompileAndRun: () => void;
   renamingTabId: string | null;
   onRenameComplete: () => void;
-  onSubmit?: () => void; // Add this new prop
+  onSubmit?: () => void;
   onLanguageChange: (language: string) => void;
   currentLanguage: string;
+  // Add any additional props needed for parameterization
 }
 
 export function EditorHeader({
@@ -51,6 +52,7 @@ export function EditorHeader({
   onSubmit,
   onLanguageChange,
   currentLanguage,
+  // ...other props...
 }: EditorHeaderProps) {
   const { currentTheme, theme, toggleTheme } = useTheme();
 

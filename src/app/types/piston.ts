@@ -3,6 +3,7 @@ export interface PistonRuntime {
   language: string;
   version: string;
   aliases: string[];
+  runtime?: string;
 }
 
 export interface PistonExecuteRequest {
@@ -24,4 +25,8 @@ export interface PistonExecuteResponse {
   };
   language: string;
   version: string;
+}
+
+export interface RuntimeVersionMap {
+  [language: string]: string[];
 }

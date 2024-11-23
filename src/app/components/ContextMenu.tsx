@@ -1,13 +1,21 @@
 import { useEffect } from "react";
-import { ContextMenuProps } from "../types/types";
 import { useTheme } from "@/app/contexts/ThemeContext";
+
+interface ContextMenuProps {
+  x: number;
+  y: number;
+  onClose: () => void;
+  children: React.ReactNode;
+  // Add any additional props needed for parameterization
+}
 
 export function ContextMenu({
   x,
   y,
   onClose,
   children,
-}: Omit<ContextMenuProps, "theme">) {
+  // ...other props...
+}: ContextMenuProps) {
   const { theme } = useTheme();
 
   useEffect(() => {
