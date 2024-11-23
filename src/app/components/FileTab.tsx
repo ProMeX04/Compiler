@@ -1,7 +1,7 @@
 import { FileTab as FileTabType } from "../types/types";
-import { FILE_ICONS } from "../constants/constants";
 import { FaRegTimesCircle } from "react-icons/fa";
 import { useTheme } from "@/app/contexts/ThemeContext";
+import { getLanguageIcon } from "@/app/config/languageConfig";
 
 interface FileTabProps {
   tab: FileTabType;
@@ -55,7 +55,7 @@ export function FileTab({
         />
       ) : (
         <div className="flex items-center">
-          {FILE_ICONS[tab.language] || FILE_ICONS.default}
+          {getLanguageIcon(tab.language)}
           <span className="truncate max-w-[140px]">{tab.name}</span>
         </div>
       )}

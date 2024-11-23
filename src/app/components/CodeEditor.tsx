@@ -11,7 +11,6 @@ import {
   CursorPosition,
   TestCase,
 } from "@/app/types/types";
-import { FILE_EXTENSIONS } from "@/app/constants/constants";
 import "@szhsin/react-menu/dist/index.css";
 import "../styles/resizable.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
@@ -19,6 +18,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import { defaultLanguages } from "@/app/config/editor";
 import { PistonRuntime } from "@/app/types/piston";
 import { getRuntimes, executeCode } from "@/app/services/piston";
+import { getLanguageExtension } from "@/app/config/languageConfig";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -64,23 +64,14 @@ interface CodeEditorProps {
 export function CodeEditor({
   defaultContent = "",
   defaultFileName = "main",
-  defaultLanguage = "cpp",
+  defaultLanguage = "python",
   initialTestCases = [{ input: "", expectedOutput: "" }],
   onSubmit,
 }: CodeEditorProps) {
+  // Get extension helper
   const getExtensionFromLanguage = (language: string): string => {
-    // First check our custom mapping
-    if (LANGUAGE_TO_EXTENSION[language]) {
-      return LANGUAGE_TO_EXTENSION[language];
-    }
-
-    // Fallback to existing FILE_EXTENSIONS check
-    for (const [ext, lang] of Object.entries(FILE_EXTENSIONS)) {
-      if (lang === language) {
-        return ext;
-      }
-    }
-    return "txt";
+    // Use language config helper
+    return getLanguageExtension(language);
   };
 
   const [tabs, setTabs] = useState<FileTabType[]>([
@@ -275,6 +266,7 @@ export function CodeEditor({
         throw new Error(`Language ${activeFile.language} not supported`);
       }
 
+      // Handle each mode separately
       if (editorMode === "test") {
         const updatedTestCases = [...testCases];
         for (let i = 0; i < testCases.length; i++) {
@@ -294,10 +286,11 @@ export function CodeEditor({
             passed,
           };
         }
-
         setTestCases(updatedTestCases);
-      } else {
-        // Normal run mode
+        // Don't set output in test mode
+      } 
+      else if (editorMode === "code") {
+        // Normal run mode - only execute with input from testCase panel
         const result = await executeCode({
           language: runtime.language,
           version: runtime.version,
