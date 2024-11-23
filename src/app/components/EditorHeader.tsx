@@ -1,13 +1,22 @@
-
-import { FaPlus, FaSun, FaMoon, FaCode, FaFlask, FaPlay, FaSpinner } from "react-icons/fa";
+import {
+  FaPlus,
+  FaSun,
+  FaMoon,
+  FaCode,
+  FaFlask,
+  FaPlay,
+  FaSpinner,
+  FaExpand,
+} from "react-icons/fa";
 import { FileTab as FileTabType } from "@/app/types/types";
 import { FileTab } from "./FileTab";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/app/contexts/ThemeContext";
+import { PistonRuntime } from "@/app/types/piston";
 
 interface EditorHeaderProps {
   tabs: FileTabType[];
   activeTab: string;
-  testMode: 'code' | 'test';
+  editorMode: "code" | "test" | "editor";
   isCompiling: boolean;
   executionTime: number | null;
   onAddFile: () => void;
@@ -15,16 +24,20 @@ interface EditorHeaderProps {
   onRemoveTab: (id: string) => void;
   onContextMenu: (e: React.MouseEvent, id: string) => void;
   onRenameTab: (id: string, newName: string) => void;
-  onTestModeChange: (mode: 'code' | 'test') => void;
+  onEditorModeChange: (mode: "code" | "test" | "editor") => void;
   onCompileAndRun: () => void;
   renamingTabId: string | null;
   onRenameComplete: () => void;
+  onSubmit?: () => void;  // Add this new prop
+  onLanguageChange: (language: string) => void;
+  currentLanguage: string;
+  supportedLanguages: { [key: string]: PistonRuntime };
 }
 
 export function EditorHeader({
   tabs,
   activeTab,
-  testMode,
+  editorMode,
   isCompiling,
   executionTime,
   onAddFile,
@@ -32,15 +45,21 @@ export function EditorHeader({
   onRemoveTab,
   onContextMenu,
   onRenameTab,
-  onTestModeChange,
+  onEditorModeChange,
   onCompileAndRun,
   renamingTabId,
-  onRenameComplete
+  onRenameComplete,
+  onSubmit,
+  onLanguageChange,
+  currentLanguage,
+  supportedLanguages,
 }: EditorHeaderProps) {
   const { currentTheme, theme, toggleTheme } = useTheme();
 
   return (
-    <div className={`flex items-center ${currentTheme.tabBg} shadow-sm transition-all duration-200`}>
+    <div
+      className={`flex items-center ${currentTheme.tabBg} shadow-sm transition-all duration-200`}
+    >
       <div className="flex-1 flex items-center">
         {tabs.map((tab) => (
           <FileTab
@@ -70,36 +89,70 @@ export function EditorHeader({
           )}
         </div>
 
-        {/* Mode Toggle */}
+        {/* Updated Mode Toggle */}
         <div className="flex items-center rounded-lg border border-zinc-600 overflow-hidden">
           <button
-            onClick={() => onTestModeChange('code')}
+            onClick={() => onEditorModeChange("code")}
             className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
-              testMode === 'code' 
-                ? 'bg-zinc-700 text-white' 
-                : 'hover:bg-zinc-800'
+              editorMode === "code"
+                ? "bg-zinc-700 text-white"
+                : "hover:bg-zinc-800"
             }`}
           >
             <FaCode size={11} />
             <span>Code</span>
           </button>
           <button
-            onClick={() => onTestModeChange('test')}
+            onClick={() => onEditorModeChange("test")}
             className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
-              testMode === 'test' 
-                ? 'bg-zinc-700 text-white' 
-                : 'hover:bg-zinc-800'
+              editorMode === "test"
+                ? "bg-zinc-700 text-white"
+                : "hover:bg-zinc-800"
             }`}
           >
             <FaFlask size={11} />
             <span>Test</span>
           </button>
+          <button
+            onClick={() => onEditorModeChange("editor")}
+            className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
+              editorMode === "editor"
+                ? "bg-zinc-700 text-white"
+                : "hover:bg-zinc-800"
+            }`}
+          >
+            <FaExpand size={11} />
+            <span>Editor</span>
+          </button>
         </div>
-        
+
+        {/* Language Selector */}
+        <select
+          value={currentLanguage}
+          onChange={(e) => onLanguageChange(e.target.value)}
+          className={`px-2 py-1 text-xs rounded-lg border ${
+            theme === "light"
+              ? "border-gray-300 bg-white hover:border-gray-400"
+              : "border-zinc-600 bg-zinc-800 hover:border-zinc-500"
+          } transition-colors cursor-pointer`}
+        >
+          {supportedLanguages && Object.keys(supportedLanguages).length > 0 ? (
+            Object.entries(supportedLanguages).map(([lang, runtime]) => (
+              <option key={lang} value={lang}>
+                {runtime.language || lang}
+              </option>
+            ))
+          ) : (
+            <option value={currentLanguage}>Loading languages...</option>
+          )}
+        </select>
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className={`flex items-center gap-1.5 text-xs hover:${theme === 'light' ? 'text-gray-800' : 'text-zinc-300'} transition-all duration-200 opacity-75 hover:opacity-100`}
+          className={`flex items-center gap-1.5 text-xs hover:${
+            theme === "light" ? "text-gray-800" : "text-zinc-300"
+          } transition-all duration-200 opacity-75 hover:opacity-100`}
         >
           {theme === "dark" ? <FaSun size={11} /> : <FaMoon size={11} />}
           <span className="capitalize">{theme}</span>
@@ -112,8 +165,8 @@ export function EditorHeader({
           title="Run (Ctrl+B)"
           className={`p-2 rounded-lg text-sm transition-all duration-200 flex items-center justify-center border border-transparent ${
             isCompiling
-              ? 'text-gray-500 cursor-not-allowed'
-              : 'text-blue-500 hover:border-blue-500'
+              ? "text-gray-500 cursor-not-allowed"
+              : "text-blue-500 hover:border-blue-500"
           }`}
         >
           {isCompiling ? (
@@ -122,6 +175,18 @@ export function EditorHeader({
             <FaPlay className="h-4 w-4" />
           )}
         </button>
+
+        {/* Submit Button - Only show if onSubmit is provided */}
+        {onSubmit && (
+          <button
+            onClick={onSubmit}
+            disabled={isCompiling}
+            title="Submit Solution"
+            className="p-2 px-4 rounded-lg text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Submit
+          </button>
+        )}
       </div>
     </div>
   );

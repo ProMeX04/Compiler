@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import "./styles/globals.css"
-import { ThemeProvider } from '@/contexts/ThemeContext';
+import "./styles/globals.css";
+import { ThemeProvider } from "@/app/contexts/ThemeContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -16,12 +16,12 @@ const geistMono = localFont({
 const cascadiaMono = localFont({
   src: [
     {
-      path: './fonts/CascadiaCode.woff2',
-      weight: '400',
-      style: 'normal',
-    }
+      path: "./fonts/CascadiaCode.woff2",
+      weight: "400",
+      style: "normal",
+    },
   ],
-  variable: '--font-cascadia-mono',
+  variable: "--font-cascadia-mono",
 });
 
 export const metadata: Metadata = {
@@ -39,9 +39,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${cascadiaMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

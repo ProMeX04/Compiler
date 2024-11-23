@@ -1,7 +1,7 @@
-import { FileTab as FileTabType } from "../app/types/types";
-import { FILE_ICONS } from "../app/constants/constants";
+import { FileTab as FileTabType } from "../types/types";
+import { FILE_ICONS } from "../constants/constants";
 import { FaRegTimesCircle } from "react-icons/fa";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/app/contexts/ThemeContext";
 
 interface FileTabProps {
   tab: FileTabType;
@@ -28,10 +28,14 @@ export function FileTab({
 
   return (
     <div
-      className={`group flex items-center px-3 h-8 cursor-pointer text-xs border-r ${currentTheme.borderColor} relative transition-all duration-200 ${
+      className={`group flex items-center px-3 h-8 cursor-pointer text-xs border-r ${
+        currentTheme.borderColor
+      } relative transition-all duration-200 ${
         isActive
           ? `${currentTheme.text} ${currentTheme.tabActiveBg} border-t-2 border-t-blue-500`
-          : `${theme === 'light' ? 'text-gray-600' : 'text-zinc-400'} ${currentTheme.tabBg} hover:${currentTheme.tabHoverBg}`
+          : `${theme === "light" ? "text-gray-600" : "text-zinc-400"} ${
+              currentTheme.tabBg
+            } hover:${currentTheme.tabHoverBg}`
       }`}
       onClick={onSelect}
       onContextMenu={onContextMenu}
@@ -60,7 +64,9 @@ export function FileTab({
           e.stopPropagation();
           onRemove();
         }}
-        className={`ml-2 opacity-0 group-hover:opacity-100 hover:${theme === 'light' ? 'text-gray-800' : 'text-zinc-300'} transition-all duration-200`}
+        className={`ml-2 opacity-0 group-hover:opacity-100 hover:${
+          theme === "light" ? "text-gray-800" : "text-zinc-300"
+        } transition-all duration-200`}
       >
         <FaRegTimesCircle />
       </button>
