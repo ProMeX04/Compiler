@@ -11,7 +11,6 @@ import {
 import { FileTab as FileTabType } from "@/app/types/types";
 import { FileTab } from "./FileTab";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { PistonRuntime } from "@/app/types/piston";
 import { LANGUAGE_CONFIGS } from "@/app/config/languageConfig";
 
 interface EditorHeaderProps {
@@ -32,7 +31,6 @@ interface EditorHeaderProps {
   onSubmit?: () => void; // Add this new prop
   onLanguageChange: (language: string) => void;
   currentLanguage: string;
-  supportedLanguages: { [key: string]: PistonRuntime };
 }
 
 export function EditorHeader({
@@ -53,7 +51,6 @@ export function EditorHeader({
   onSubmit,
   onLanguageChange,
   currentLanguage,
-  supportedLanguages,
 }: EditorHeaderProps) {
   const { currentTheme, theme, toggleTheme } = useTheme();
 
@@ -128,25 +125,23 @@ export function EditorHeader({
         </div>
 
         {/* Language Selector */}
-        <select
-          value={currentLanguage}
-          onChange={(e) => onLanguageChange(e.target.value)}
-          className={`px-2 py-1 text-xs rounded-lg border ${
-            theme === "light"
-              ? "border-gray-300 bg-white hover:border-gray-400"
-              : "border-zinc-600 bg-zinc-800 hover:border-zinc-500"
-          } transition-colors cursor-pointer`}
-        >
-          {supportedLanguages && Object.keys(supportedLanguages).length > 0 ? (
-            Object.entries(supportedLanguages).map(([lang]) => (
-              <option key={lang} value={lang}>
-                {LANGUAGE_CONFIGS[lang]?.displayName || lang}
+        <div className="flex items-center rounded-lg border border-zinc-600 overflow-hidden">
+          <select
+            value={currentLanguage}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            className={`p-2 text-xs flex items-center gap-1.5 bg-transparent hover:bg-zinc-800 cursor-pointer outline-none`}  
+          >
+            {Object.entries(LANGUAGE_CONFIGS).map(([lang, config]) => (
+              <option 
+                key={lang} 
+                value={lang}
+                className="bg-zinc-800"
+              >
+                {config.displayName}
               </option>
-            ))
-          ) : (
-            <option value={currentLanguage}>Loading languages...</option>
-          )}
-        </select>
+            ))}
+          </select>
+        </div>
 
         {/* Theme Toggle */}
         <button

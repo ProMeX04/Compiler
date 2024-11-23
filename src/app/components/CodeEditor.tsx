@@ -1,7 +1,6 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { EditorHeader } from "@/app/components/EditorHeader";
 import { TestPanel } from "@/app/components/TestPanel";
@@ -15,31 +14,32 @@ import "@szhsin/react-menu/dist/index.css";
 import "../styles/resizable.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { defaultLanguages } from "@/app/config/editor";
-import { PistonRuntime } from "@/app/types/piston";
-import { getRuntimes, executeCode } from "@/app/services/piston";
-import { LANGUAGE_CONFIGS, getLanguageExtension } from "@/app/config/languageConfig";
+import { executeCode } from "@/app/services/piston";
+import {
+  LANGUAGE_CONFIGS,
+  getLanguageExtension,
+} from "@/app/config/languageConfig";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
 });
 
-interface CodeEditorProps {
-  // Initial content
-  defaultContent?: string;
-  defaultFileName?: string; // Now this should be without extension
-  defaultLanguage?: string;
+interface TemplateCode {
+  [language: string]: string;
+}
 
-  // Test cases
+interface CodeEditorProps {
+  defaultContent?: string;
+  defaultFileName?: string;
+  defaultLanguage?: string;
   initialTestCases?: TestCase[];
 
-  // Submission handling
   onSubmit?: (
     code: string,
     language: string,
     testCases: TestCase[]
   ) => Promise<void>;
-  // Optional callbacks
+  templateCodes?: TemplateCode;
 }
 
 export function CodeEditor({
@@ -47,11 +47,10 @@ export function CodeEditor({
   defaultFileName = "main",
   defaultLanguage = "python",
   initialTestCases = [{ input: "", expectedOutput: "" }],
+  templateCodes = {},
   onSubmit,
 }: CodeEditorProps) {
-  // Get extension helper
   const getExtensionFromLanguage = (language: string): string => {
-    // Use language config helper
     return getLanguageExtension(language);
   };
 
@@ -59,7 +58,11 @@ export function CodeEditor({
     {
       id: "1",
       name: `${defaultFileName}.${getExtensionFromLanguage(defaultLanguage)}`,
-      content: defaultContent,
+      content:
+        defaultContent ||
+        templateCodes[defaultLanguage] ||
+        LANGUAGE_CONFIGS[defaultLanguage]?.defaultContent ||
+        "",
       language: defaultLanguage,
     },
   ]);
@@ -79,62 +82,16 @@ export function CodeEditor({
     column: 1,
   });
   const { currentTheme, theme } = useTheme();
-  const [runtimes, setRuntimes] = useState<PistonRuntime[]>([]);
   const [editorMode, setEditorMode] = useState<"code" | "test" | "editor">(
     "code"
   );
   const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
-  const [supportedLanguages, setSupportedLanguages] = useState<{
-    [key: string]: PistonRuntime;
-  }>({
-    // Default state while loading
-    [defaultLanguage]: {
-      language: defaultLanguage,
-      version: "latest",
-      aliases: [],
-    },
-  });
 
-  useEffect(() => {
-    getRuntimes()
-      .then((runtimes) => {
-        const latestVersions: { [key: string]: PistonRuntime } = {};
-
-        runtimes.forEach((runtime) => {
-          // Special handling for C++
-          const language =
-            runtime.language === "c++" ? "cpp" : runtime.language;
-          
-          // Only process languages that we support in our config
-          if (LANGUAGE_CONFIGS[language]) {
-            const runtimeWithDisplay = {
-              ...runtime,
-              language,
-              display_name: LANGUAGE_CONFIGS[language].displayName
-            };
-
-            const currentVersion = latestVersions[language]?.version || '0';
-            if (!latestVersions[language] || runtime.version > currentVersion) {
-              latestVersions[language] = runtimeWithDisplay;
-            }
-          }
-        });
-
-        // Only keep languages from our config
-        const filteredLanguages = Object.keys(LANGUAGE_CONFIGS).reduce((acc, lang) => {
-          if (latestVersions[lang]) {
-            acc[lang] = latestVersions[lang];
-          }
-          return acc;
-        }, {} as { [key: string]: PistonRuntime });
-
-        setSupportedLanguages(filteredLanguages);
-        setRuntimes(runtimes);
-      })
-      .catch((error) => {
-        console.error("Failed to load runtimes:", error);
-      });
-  }, []);
+  // Thêm state cho modal tạo file mới
+  const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState("Main");
+  // Thêm state cho language mới
+  const [newFileLanguage, setNewFileLanguage] = useState(defaultLanguage);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -149,18 +106,29 @@ export function CodeEditor({
   }, [tabs, activeTab, testCase]);
 
   const addNewFile = () => {
+    setNewFileLanguage(defaultLanguage); // Reset về ngôn ngữ mặc định
+    setIsNewFileModalOpen(true);
+  };
+
+  const handleCreateNewFile = () => {
     const newId = String(Date.now());
-    const defaultLang = defaultLanguages.python;
+    const extension = getExtensionFromLanguage(newFileLanguage);
+    const templateCode =
+      templateCodes[newFileLanguage] ||
+      LANGUAGE_CONFIGS[newFileLanguage]?.defaultContent ||
+      "";
+
     setTabs((prev) => [
       ...prev,
       {
         id: newId,
-        name: `untitled.${getExtensionFromLanguage(defaultLang.name)}`,
-        content: defaultLang.defaultContent,
-        language: defaultLang.name,
+        name: `${newFileName}.${extension}`,
+        content: templateCode,
+        language: newFileLanguage,
       },
     ]);
     setActiveTab(newId);
+    setIsNewFileModalOpen(false);
   };
 
   const updateTabName = (id: string, newName: string) => {
@@ -234,13 +202,7 @@ export function CodeEditor({
     const startTime = performance.now();
 
     try {
-      const runtime = runtimes.find(
-        (r) =>
-          r.language === activeFile.language ||
-          r.aliases.includes(activeFile.language)
-      );
-
-      if (!runtime) {
+      if (!LANGUAGE_CONFIGS[activeFile.language]) {
         throw new Error(`Language ${activeFile.language} not supported`);
       }
 
@@ -249,8 +211,8 @@ export function CodeEditor({
         const updatedTestCases = [...testCases];
         for (let i = 0; i < testCases.length; i++) {
           const result = await executeCode({
-            language: runtime.language,
-            version: runtime.version,
+            language: activeFile.language,
+            version: "latest",
             files: [{ content: activeFile.content }],
             stdin: testCases[i].input,
           });
@@ -265,13 +227,10 @@ export function CodeEditor({
           };
         }
         setTestCases(updatedTestCases);
-        // Don't set output in test mode
-      } 
-      else if (editorMode === "code") {
-        // Normal run mode - only execute with input from testCase panel
+      } else if (editorMode === "code") {
         const result = await executeCode({
-          language: runtime.language,
-          version: runtime.version,
+          language: activeFile.language,
+          version: "latest",
           files: [{ content: activeFile.content }],
           stdin: testCase,
         });
@@ -374,18 +333,26 @@ export function CodeEditor({
   };
 
   const handleLanguageChange = (newLanguage: string) => {
-    const runtime = supportedLanguages[newLanguage];
-    if (!runtime) return;
+    if (!LANGUAGE_CONFIGS[newLanguage]) return;
 
     setTabs((prev) =>
       prev.map((tab) => {
         if (tab.id === activeTab) {
           const nameWithoutExt = tab.name.split(".")[0];
           const extension = getExtensionFromLanguage(newLanguage);
+          const shouldUseTemplate = !tab.content || tab.content.trim() === "";
+
+          const templateCode = shouldUseTemplate
+            ? templateCodes[newLanguage] ||
+              LANGUAGE_CONFIGS[newLanguage]?.defaultContent ||
+              ""
+            : tab.content;
+
           return {
             ...tab,
             language: newLanguage,
             name: `${nameWithoutExt}.${extension}`,
+            content: templateCode,
           };
         }
         return tab;
@@ -417,7 +384,6 @@ export function CodeEditor({
         onSubmit={onSubmit ? handleSubmit : undefined}
         onLanguageChange={handleLanguageChange}
         currentLanguage={activeFile?.language || defaultLanguage}
-        supportedLanguages={supportedLanguages}
       />
 
       <PanelGroup direction="horizontal" className="flex-1 overflow-auto">
@@ -566,6 +532,73 @@ export function CodeEditor({
             Rename
           </button>
         </ContextMenu>
+      )}
+
+      {/* New File Modal */}
+      {isNewFileModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className={`${currentTheme.bg} rounded-lg p-4 min-w-[300px]`}>
+            <div className="mb-4">
+              <label className="block text-xs mb-2 opacity-70">
+                File Name:
+              </label>
+              <input
+                type="text"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                className={`w-full p-2 text-sm rounded border ${
+                  theme === "light"
+                    ? "border-gray-300 bg-white"
+                    : "border-zinc-700 bg-zinc-800"
+                }`}
+                placeholder="Enter file name"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateNewFile();
+                  if (e.key === "Escape") setIsNewFileModalOpen(false);
+                }}
+              />
+            </div>
+
+            {/* Language Selector */}
+            <div className="mb-4">
+              <label className="block text-xs mb-2 opacity-70">Language:</label>
+              <select
+                value={newFileLanguage}
+                onChange={(e) => setNewFileLanguage(e.target.value)}
+                className={`w-full p-2 text-sm rounded border ${
+                  theme === "light"
+                    ? "border-gray-300 bg-white"
+                    : "border-zinc-700 bg-zinc-800"
+                }`}
+              >
+                {Object.entries(LANGUAGE_CONFIGS).map(([lang, config]) => (
+                  <option key={lang} value={lang}>
+                    {config.displayName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setIsNewFileModalOpen(false)}
+                className={`px-3 py-1.5 text-xs rounded ${
+                  theme === "light" ? "hover:bg-gray-100" : "hover:bg-zinc-700"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateNewFile}
+                className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white hover:bg-blue-600"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
