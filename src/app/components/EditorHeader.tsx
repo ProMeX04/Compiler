@@ -12,6 +12,7 @@ import { FileTab as FileTabType } from "@/app/types/types";
 import { FileTab } from "./FileTab";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { PistonRuntime } from "@/app/types/piston";
+import { LANGUAGE_CONFIGS } from "@/app/config/languageConfig";
 
 interface EditorHeaderProps {
   tabs: FileTabType[];
@@ -28,7 +29,7 @@ interface EditorHeaderProps {
   onCompileAndRun: () => void;
   renamingTabId: string | null;
   onRenameComplete: () => void;
-  onSubmit?: () => void;  // Add this new prop
+  onSubmit?: () => void; // Add this new prop
   onLanguageChange: (language: string) => void;
   currentLanguage: string;
   supportedLanguages: { [key: string]: PistonRuntime };
@@ -137,9 +138,9 @@ export function EditorHeader({
           } transition-colors cursor-pointer`}
         >
           {supportedLanguages && Object.keys(supportedLanguages).length > 0 ? (
-            Object.entries(supportedLanguages).map(([lang, runtime]) => (
+            Object.entries(supportedLanguages).map(([lang]) => (
               <option key={lang} value={lang}>
-                {runtime.language || lang}
+                {LANGUAGE_CONFIGS[lang]?.displayName || lang}
               </option>
             ))
           ) : (

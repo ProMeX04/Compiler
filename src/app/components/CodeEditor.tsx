@@ -18,30 +18,11 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import { defaultLanguages } from "@/app/config/editor";
 import { PistonRuntime } from "@/app/types/piston";
 import { getRuntimes, executeCode } from "@/app/services/piston";
-import { getLanguageExtension } from "@/app/config/languageConfig";
+import { LANGUAGE_CONFIGS, getLanguageExtension } from "@/app/config/languageConfig";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
 });
-
-const LANGUAGE_TO_EXTENSION: { [key: string]: string } = {
-  "c++": "cpp", // C++
-  cpp: "cpp", // C++ (alternative name)
-  c: "c", // C
-  python: "py", // Python
-  javascript: "js", // JavaScript
-  typescript: "ts", // TypeScript
-  java: "java", // Java
-  csharp: "cs", // C#
-  php: "php", // PHP
-  ruby: "rb", // Ruby
-  go: "go", // Go
-  rust: "rs", // Rust
-  kotlin: "kt", // Kotlin
-  swift: "swift", // Swift
-  scala: "scala", // Scala
-  perl: "pl", // Perl
-};
 
 interface CodeEditorProps {
   // Initial content
@@ -123,32 +104,29 @@ export function CodeEditor({
           // Special handling for C++
           const language =
             runtime.language === "c++" ? "cpp" : runtime.language;
-          // Make display name more user-friendly
-          const displayName =
-            language === "cpp"
-              ? "C++"
-              : language.charAt(0).toUpperCase() + language.slice(1);
+          
+          // Only process languages that we support in our config
+          if (LANGUAGE_CONFIGS[language]) {
+            const runtimeWithDisplay = {
+              ...runtime,
+              language,
+              display_name: LANGUAGE_CONFIGS[language].displayName
+            };
 
-          const runtimeWithDisplay = {
-            ...runtime,
-            language,
-            display_name: displayName,
-          };
-
-          // Check if this is a newer version
-          const currentVersion = latestVersions[language]?.version || "0";
-          if (!latestVersions[language] || runtime.version > currentVersion) {
-            latestVersions[language] = runtimeWithDisplay;
+            const currentVersion = latestVersions[language]?.version || '0';
+            if (!latestVersions[language] || runtime.version > currentVersion) {
+              latestVersions[language] = runtimeWithDisplay;
+            }
           }
         });
 
-        // Filter and set supported languages
-        const filteredLanguages = Object.entries(latestVersions)
-          .filter(([lang]) => LANGUAGE_TO_EXTENSION[lang])
-          .reduce((acc, [lang, runtime]) => {
-            acc[lang] = runtime;
-            return acc;
-          }, {} as { [key: string]: PistonRuntime });
+        // Only keep languages from our config
+        const filteredLanguages = Object.keys(LANGUAGE_CONFIGS).reduce((acc, lang) => {
+          if (latestVersions[lang]) {
+            acc[lang] = latestVersions[lang];
+          }
+          return acc;
+        }, {} as { [key: string]: PistonRuntime });
 
         setSupportedLanguages(filteredLanguages);
         setRuntimes(runtimes);
