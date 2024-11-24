@@ -2,29 +2,23 @@
 import React, { useEffect, useState } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { EditorHeader } from "@/app/components/EditorHeader";
-import { TestPanel } from "@/app/components/TestPanel";
+import { TestPanel } from "@/app/components/Editor/TestPanel";
 import { ContextMenu } from "@/app/components/ContextMenu";
-import {
-  CursorPosition,
-  TestCase,
-} from "@/app/types/types";
+import { CursorPosition, TestCase } from "@/app/types/types";
 import "@szhsin/react-menu/dist/index.css";
 import "../styles/resizable.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { executeCode } from "@/app/services/piston";
-import {
-  LANGUAGE_CONFIGS,
-} from "@/app/config/languageConfig";
-import { useFileManager } from '@/app/hooks/useFileManager';
-import { useNewFileModal } from '@/app/hooks/useNewFileModal';
-import { usePistonRuntimes } from '@/app/hooks/usePistonRuntimes';
+import { useFileManager } from "@/app/hooks/useFileManager";
+import { useNewFileModal } from "@/app/hooks/useNewFileModal";
+import { usePistonRuntimes } from "@/app/hooks/usePistonRuntimes";
 import {
   MonacoEditor,
   NewFileModal,
   InputOutputPanel,
   ResizeHandle,
 } from "./Editor";
+import { useCodeExecution } from "../hooks/useCodeExecution";
 
 export interface CodeEditorProps {
   defaultContent?: string;
@@ -32,7 +26,11 @@ export interface CodeEditorProps {
   defaultLanguage?: string;
   initialTestCases?: TestCase[];
   templateCodes?: Record<string, string>;
-  onSubmit?: (content: string, language: string, testCases: TestCase[]) => Promise<void>;
+  onSubmit?: (
+    content: string,
+    language: string,
+    testCases: TestCase[]
+  ) => Promise<void>;
 }
 
 export function CodeEditor({
@@ -42,9 +40,8 @@ export function CodeEditor({
   initialTestCases = [{ input: "", expectedOutput: "" }],
   templateCodes = {},
   onSubmit,
-  // ...other props...
-}: CodeEditorProps) {
-
+}: // ...other props...
+CodeEditorProps) {
   const {
     tabs,
     setTabs,
@@ -55,7 +52,7 @@ export function CodeEditor({
     updateTabContent,
     updateTabName,
     removeTab,
-    handleLanguageChange, 
+    handleLanguageChange,
     setRenamingTabId,
   } = useFileManager({
     defaultContent,
@@ -86,34 +83,93 @@ export function CodeEditor({
 
   const [testCase, setTestCase] = useState("");
   const [output, setOutput] = useState("");
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [executionTime, setExecutionTime] = useState<number | null>(null);
-  const [contextMenu, setContextMenu] = useState<{
-    id: string;
-    x: number;
-    y: number;
-  } | null>(null);
   const [, setCursorPosition] = useState<CursorPosition>({
     line: 1,
     column: 1,
   });
   const { currentTheme, theme } = useTheme();
   const [editorMode, setEditorMode] = useState<"code" | "test" | "editor">(
-    "editor"
+    "code"
   );
   const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
 
+  const {
+    isCompiling,
+    setIsCompiling,
+    executionTime,
+    setExecutionTime,
+    executeCodeWithMetrics,
+    runTests
+  } = useCodeExecution();
+
+  const [contextMenu, setContextMenu] = useState<{
+    id: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const compileAndRun = React.useCallback(async () => {
+    if (!activeFile) return;
+
+    const version = getLatestVersion(activeFile.language);
+    if (!version) {
+      setOutput(`Error: No runtime version found for ${activeFile.language}`);
+      return;
+    }
+
+    setExecutionTime(null);
+    setIsCompiling(true);
+
+    try {
+      if (editorMode === "test") {
+        const updatedTestCases = await runTests(
+          activeFile.language,
+          version,
+          activeFile.content, 
+          testCases
+        );
+        setTestCases(updatedTestCases);
+      } else {
+        const result = await executeCodeWithMetrics(
+          activeFile.language,
+          version,
+          activeFile.content,
+          testCase
+        );
+        setOutput(result.output);
+        setExecutionTime(result.executionTime);
+      }
+    } catch (error) {
+      setOutput(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsCompiling(false);
+    }
+  }, [
+    activeFile,
+    editorMode,
+    testCase,
+    testCases,
+    getLatestVersion,
+    runTests,
+    executeCodeWithMetrics,
+    setOutput,
+    setExecutionTime,
+    setIsCompiling,
+    setTestCases
+  ]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key.toLowerCase() === "b") {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
-        compileAndRun();
+        e.stopPropagation();
+        await compileAndRun();
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [tabs, activeTab, testCase]);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [compileAndRun]); 
 
   const handleContextMenu = (event: React.MouseEvent, id: string) => {
     event.preventDefault();
@@ -145,103 +201,6 @@ export function CodeEditor({
 
   const removeTestCase = (index: number) => {
     setTestCases((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const compileAndRun = async () => {
-    if (!activeFile) return;
-
-    setIsCompiling(true);
-    setOutput("");
-    setExecutionTime(null);
-
-    const startTime = performance.now();
-
-    try {
-      const languageConfig = LANGUAGE_CONFIGS[activeFile.language];
-      if (!languageConfig) {
-        throw new Error(`Language ${activeFile.language} not supported`);
-      }
-
-      const version = getLatestVersion(activeFile.language);
-      if (!version) {
-        throw new Error(`No runtime version found for ${activeFile.language}`);
-      }
-
-      if (editorMode === "test") {
-        const updatedTestCases = [...testCases];
-        for (let i = 0; i < testCases.length; i++) {
-          try {
-            const result = await executeCode({
-              language: activeFile.language,
-              version,
-              files: [{ content: activeFile.content }],
-              stdin: testCases[i].input,
-            });
-
-            if (!result || !result.run) {
-              throw new Error("Invalid response from execution service");
-            }
-
-            const testOutput = result.run.stdout?.trim() || "";
-            const stderr = result.run.stderr?.trim() || "";
-            const exitCode = result.run.code;
-
-            const combinedOutput = [
-              testOutput,
-              stderr,
-              exitCode !== 0 ? `Exit code: ${exitCode}` : null
-            ].filter(Boolean).join("\n");
-
-            updatedTestCases[i] = {
-              ...testCases[i],
-              actualOutput: combinedOutput,
-              passed: !stderr && exitCode === 0 && testOutput === testCases[i].expectedOutput.trim()
-            };
-          } catch (err) {
-            updatedTestCases[i] = {
-              ...testCases[i],
-              actualOutput: `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
-              passed: false
-            };
-          }
-        }
-        setTestCases(updatedTestCases);
-      } else if (editorMode === "code") {
-        try {
-          const result = await executeCode({
-            language: activeFile.language,
-            version,
-            files: [{ content: activeFile.content }],
-            stdin: testCase,
-          });
-
-          if (!result || !result.run) {
-            throw new Error("Invalid response from execution service");
-          }
-
-          const stdout = result.run.stdout?.trim() || "";
-          const stderr = result.run.stderr?.trim() || "";
-          const exitCode = result.run.code;
-
-          const output = [
-            stdout,
-            stderr,
-            exitCode !== 0 ? `Exit code: ${exitCode}` : null
-          ].filter(Boolean).join("\n");
-
-          setOutput(output || "No output");
-        } catch (err) {
-          setOutput(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
-        }
-      }
-
-      const endTime = performance.now();
-      setExecutionTime(Math.round(endTime - startTime));
-    } catch (error) {
-      setOutput(`System Error: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setIsCompiling(false);
-    }
   };
 
   const handleEditorDidMount = (
@@ -310,7 +269,9 @@ export function CodeEditor({
   };
 
   return (
-    <div className={`flex flex-col h-screen ${currentTheme.bg} ${currentTheme.text} overflow-hidden`}>
+    <div
+      className={`flex flex-col h-screen ${currentTheme.bg} ${currentTheme.text} overflow-hidden`}
+    >
       <EditorHeader
         tabs={tabs}
         activeTab={activeTab}
@@ -332,7 +293,12 @@ export function CodeEditor({
       />
 
       <PanelGroup direction="horizontal" className="flex-1 overflow-auto">
-        <Panel defaultSize={editorMode === "editor" ? 100 : 50} minSize={20}>
+        <Panel 
+          id="editor-panel"
+          order={1}
+          defaultSize={editorMode === "editor" ? 100 : 80} 
+          minSize={20}
+        >
           <MonacoEditor
             language={activeFile?.language || "plaintext"}
             value={activeFile?.content || ""}
@@ -380,7 +346,12 @@ export function CodeEditor({
         {editorMode !== "editor" && (
           <>
             <ResizeHandle />
-            <Panel defaultSize={50} minSize={20}>
+            <Panel 
+              id="output-panel"
+              order={2}
+              defaultSize={20} 
+              minSize={5}
+            >
               {editorMode === "test" ? (
                 <TestPanel
                   testCases={testCases}

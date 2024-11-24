@@ -17,7 +17,6 @@ export function InputOutputPanel({
   output,
   onTestCaseChange,
   onOutputChange,
-  // ...other props...
 }: InputOutputPanelProps) {
   return (
     <PanelGroup direction="vertical" className="h-full overflow-auto">
@@ -39,7 +38,6 @@ export function InputOutputPanel({
             value={output}
             onChange={onOutputChange}
             theme={currentTheme.name}
-            options={{ readOnly: true }}
           />
         </div>
       </Panel>

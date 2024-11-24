@@ -12,7 +12,6 @@ interface FileTabProps {
   isRenaming: boolean;
   onRename: (newName: string) => void;
   onRenameComplete: () => void;
-  // Add any additional props needed for parameterization
 }
 
 export function FileTab({

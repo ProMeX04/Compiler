@@ -54,137 +54,139 @@ export function EditorHeader({
   currentLanguage,
   // ...other props...
 }: EditorHeaderProps) {
-  const { currentTheme, theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
+  
+  // Điều chỉnh base style cho buttons để nhỏ hơn
+  const buttonBaseClass = "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors";
+  const buttonActiveClass = "bg-zinc-700 text-white";
+  const buttonInactiveClass = "hover:bg-zinc-800 text-zinc-300";
 
   return (
-    <div
-      className={`flex items-center ${currentTheme.tabBg} shadow-sm transition-all duration-200`}
-    >
-      <div className="flex-1 flex items-center">
-        {tabs.map((tab) => (
-          <FileTab
-            key={tab.id}
-            tab={tab}
-            isActive={activeTab === tab.id}
-            onSelect={() => onSelectTab(tab.id)}
-            onRemove={() => onRemoveTab(tab.id)}
-            onContextMenu={(e) => onContextMenu(e, tab.id)}
-            isRenaming={renamingTabId === tab.id}
-            onRename={(newName) => onRenameTab(tab.id, newName)}
-            onRenameComplete={onRenameComplete}
-          />
-        ))}
-        <button
-          onClick={onAddFile}
-          className={`flex items-center justify-center px-3 h-8 text-sm border-r ${currentTheme.borderColor} ${currentTheme.text} ${currentTheme.tabBg} hover:${currentTheme.tabHoverBg} transition-all duration-200`}
-        >
-          <FaPlus className="transform hover:rotate-90 transition-transform duration-200" />
-        </button>
-      </div>
-      <div className="flex items-center gap-4 px-3">
-        {/* Status Information */}
-        <div className="flex items-center gap-3 text-xs opacity-75">
-          {executionTime !== null && (
-            <span>{`Execution Time: ${executionTime}ms`}</span>
-          )}
-        </div>
-
-        {/* Updated Mode Toggle */}
-        <div className="flex items-center rounded-lg border border-zinc-600 overflow-hidden">
+    <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-800">
+      <div
+        className={`flex items-center justify-between px-4 border-b ${
+          theme === 'light' 
+            ? 'bg-gray-100 border-gray-200' 
+            : 'bg-zinc-800 border-zinc-700'
+        }`}
+      >
+        {/* Left section with tabs */}
+        <div className="flex-1 flex items-center overflow-x-auto">
+          {tabs.map((tab) => (
+            <FileTab
+              key={tab.id}
+              tab={tab}
+              isActive={activeTab === tab.id}
+              onSelect={() => onSelectTab(tab.id)}
+              onRemove={() => onRemoveTab(tab.id)}
+              onContextMenu={(e) => onContextMenu(e, tab.id)}
+              isRenaming={renamingTabId === tab.id}
+              onRename={(newName) => onRenameTab(tab.id, newName)}
+              onRenameComplete={onRenameComplete}
+            />
+          ))}
           <button
-            onClick={() => onEditorModeChange("code")}
-            className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
-              editorMode === "code"
-                ? "bg-zinc-700 text-white"
-                : "hover:bg-zinc-800"
-            }`}
+            onClick={onAddFile}
+            className={`${buttonBaseClass} ${buttonInactiveClass}`}
           >
-            <FaCode size={11} />
-            <span>Code</span>
-          </button>
-          <button
-            onClick={() => onEditorModeChange("test")}
-            className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
-              editorMode === "test"
-                ? "bg-zinc-700 text-white"
-                : "hover:bg-zinc-800"
-            }`}
-          >
-            <FaFlask size={11} />
-            <span>Test</span>
-          </button>
-          <button
-            onClick={() => onEditorModeChange("editor")}
-            className={`p-2 text-xs flex items-center gap-1.5 transition-colors ${
-              editorMode === "editor"
-                ? "bg-zinc-700 text-white"
-                : "hover:bg-zinc-800"
-            }`}
-          >
-            <FaExpand size={11} />
-            <span>Editor</span>
+            <FaPlus className="w-3 h-3" />
           </button>
         </div>
 
-        {/* Language Selector */}
-        <div className="flex items-center rounded-lg border border-zinc-600 overflow-hidden">
-          <select
-            value={currentLanguage}
-            onChange={(e) => onLanguageChange(e.target.value)}
-            className={`p-2 text-xs flex items-center gap-1.5 bg-transparent hover:bg-zinc-800 cursor-pointer outline-none`}  
-          >
-            {Object.entries(LANGUAGE_CONFIGS).map(([lang, config]) => (
-              <option 
-                key={lang} 
-                value={lang}
-                className="bg-zinc-800"
-              >
-                {config.displayName}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className={`flex items-center gap-1.5 text-xs hover:${
-            theme === "light" ? "text-gray-800" : "text-zinc-300"
-          } transition-all duration-200 opacity-75 hover:opacity-100`}
-        >
-          {theme === "dark" ? <FaSun size={11} /> : <FaMoon size={11} />}
-          <span className="capitalize">{theme}</span>
-        </button>
-
-        {/* Run Button */}
-        <button
-          onClick={onCompileAndRun}
-          disabled={isCompiling}
-          title="Run (Ctrl+B)"
-          className={`p-2 rounded-lg text-sm transition-all duration-200 flex items-center justify-center border border-transparent ${
-            isCompiling
-              ? "text-gray-500 cursor-not-allowed"
-              : "text-blue-500 hover:border-blue-500"
-          }`}
-        >
-          {isCompiling ? (
-            <FaSpinner className="animate-spin h-4 w-4" />
-          ) : (
-            <FaPlay className="h-4 w-4" />
-          )}
-        </button>
-
-        {/* Submit Button - Only show if onSubmit is provided */}
-        {onSubmit && (
+        {/* Center section with run controls */}
+        <div className="flex items-center justify-center gap-1.5 absolute left-1/2 -translate-x-1/2">
           <button
-            onClick={onSubmit}
+            onClick={onCompileAndRun}
             disabled={isCompiling}
-            title="Submit Solution"
-            className="p-2 px-4 rounded-lg text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Run (Ctrl+B)"
+            className={`${buttonBaseClass} ${
+              isCompiling ? 'opacity-50 cursor-not-allowed' : buttonInactiveClass
+            } ${editorMode === 'editor' ? 'hidden' : ''}`}
           >
-            Submit
+            {isCompiling ? (
+              <FaSpinner className="animate-spin w-3 h-3" />
+            ) : (
+              <FaPlay className="w-3 h-3" />
+            )}
           </button>
-        )}
+          {executionTime !== null && (
+            <span className="text-[11px] text-zinc-500">
+              {executionTime}ms
+            </span>
+          )}
+        </div>
+
+        {/* Right section with controls */}
+        <div className="flex items-center gap-1.5">
+          {onSubmit && (
+            <button
+              onClick={onSubmit}
+              className={`${buttonBaseClass} bg-blue-500 text-white hover:bg-blue-600`}
+              disabled={isCompiling}
+            >
+              Submit
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            {/* Mode Toggle */}
+            <div className="flex items-center rounded bg-zinc-800/50">
+              <button
+                onClick={() => onEditorModeChange("code")}
+                className={`${buttonBaseClass} ${
+                  editorMode === "code" ? buttonActiveClass : buttonInactiveClass
+                }`}
+                title="Run Code"
+              >
+                <FaCode size={11} />
+              </button>
+              <button
+                onClick={() => onEditorModeChange("test")}
+                className={`${buttonBaseClass} ${
+                  editorMode === "test" ? buttonActiveClass : buttonInactiveClass
+                }`}
+                title="Test Cases"
+              >
+                <FaFlask size={11} />
+              </button>
+              <button
+                onClick={() => onEditorModeChange("editor")}
+                className={`${buttonBaseClass} ${
+                  editorMode === "editor" ? buttonActiveClass : buttonInactiveClass
+                }`}
+                title="Full Screen"
+              >
+                <FaExpand size={11} />
+              </button>
+            </div>
+
+            {/* Language Selector */}
+            <select
+              value={currentLanguage}
+              onChange={(e) => onLanguageChange(e.target.value)}
+              className={`${buttonBaseClass} ${buttonInactiveClass} bg-transparent cursor-pointer outline-none`}
+            >
+              {Object.entries(LANGUAGE_CONFIGS).map(([lang, config]) => (
+                <option 
+                  key={lang} 
+                  value={lang}
+                  className="bg-zinc-800"
+                >
+                  {config.displayName}
+                </option>
+              ))}
+            </select>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className={`${buttonBaseClass} ${buttonInactiveClass}`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+            >
+              {theme === "dark" ? <FaSun size={11} /> : <FaMoon size={11} />}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

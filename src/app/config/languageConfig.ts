@@ -34,7 +34,7 @@ export const LANGUAGE_CONFIGS: { [key: string]: LanguageConfig } = {
     extension: "cpp",
     icon: React.createElement(SiCplusplus, { className: "mr-2" }),
     defaultContent: "#include <iostream>\n\nint main() {\n    // Write your code here\n    return 0;\n}",
-    aliases: ["c++"]
+    aliases: ["c++", "cpp", "g++"]
   },
   c: {
     name: "c",
@@ -49,7 +49,7 @@ export const LANGUAGE_CONFIGS: { [key: string]: LanguageConfig } = {
     extension: "py",
     icon: React.createElement(FaPython, { className: "mr-2" }),
     defaultContent: "def solution():\n    # Write your code here\n    pass\n",
-    aliases: ["python3", "py"]
+    aliases: ["python3", "py", "python"]
   },
   javascript: {
     name: "javascript",
@@ -57,7 +57,7 @@ export const LANGUAGE_CONFIGS: { [key: string]: LanguageConfig } = {
     extension: "js",
     icon: React.createElement(FaJs, { className: "mr-2" }),
     defaultContent: "function solution() {\n    // Write your code here\n}\n",
-    aliases: ["node", "nodejs"]
+    aliases: ["node", "nodejs", "js"]
   },
   typescript: {
     name: "typescript",
@@ -72,6 +72,7 @@ export const LANGUAGE_CONFIGS: { [key: string]: LanguageConfig } = {
     extension: "java",
     icon: React.createElement(FaJava, { className: "mr-2" }),
     defaultContent: "public class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}",
+    aliases: ["java", "openjdk"]
   },
   csharp: {
     name: "csharp",
@@ -79,7 +80,7 @@ export const LANGUAGE_CONFIGS: { [key: string]: LanguageConfig } = {
     extension: "cs",
     icon: React.createElement(SiCsharp, { className: "mr-2" }),
     defaultContent: "using System;\n\nclass Program {\n    static void Main() {\n        // Write your code here\n    }\n}",
-    aliases: ["cs", "dotnet"]
+    aliases: ["c#", "cs", "dotnet", "csharp"]
   },
   go: {
     name: "go",
