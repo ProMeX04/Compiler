@@ -46,6 +46,21 @@ export function MonacoEditor({
     lineNumbersMinChars: 2,
     lineDecorationsWidth: 0,
     lineNumbers: 'on',
+    wordWrap: 'on', 
+    wrappingIndent: 'deepIndent', 
+  };
+
+  const handleEditorDidMount = async (
+    editor: Monaco.editor.IStandaloneCodeEditor,
+    monaco: typeof Monaco
+  ) => {
+    if (typeof window !== 'undefined') {
+      const { registerLanguageSuggestions } = await import('./languageSuggestions');
+      registerLanguageSuggestions(monaco);
+    }
+    if (onMount) {
+      onMount(editor, monaco);
+    }
   };
 
   return (
@@ -55,7 +70,7 @@ export function MonacoEditor({
       value={value}
       path={path}
       onChange={(value) => onChange(value || "")}
-      onMount={onMount}
+      onMount={handleEditorDidMount}
       theme={theme}
       options={{
         ...defaultOptions,

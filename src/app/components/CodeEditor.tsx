@@ -6,7 +6,6 @@ import { TestPanel } from "@/app/components/Editor/TestPanel";
 import { ContextMenu } from "@/app/components/ContextMenu";
 import { CursorPosition, TestCase } from "@/app/types/types";
 import "@szhsin/react-menu/dist/index.css";
-import "../styles/resizable.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useFileManager } from "@/app/hooks/useFileManager";
@@ -19,6 +18,8 @@ import {
   ResizeHandle,
 } from "./Editor";
 import { useCodeExecution } from "../hooks/useCodeExecution";
+import { FileExplorer } from "@/app/components/FileExplorer";
+import { addDuplicateLineCommand, addMoveLineCommands } from "./Editor/shortcuts";
 
 export interface CodeEditorProps {
   defaultContent?: string;
@@ -47,11 +48,9 @@ CodeEditorProps) {
     setTabs,
     activeTab,
     activeFile,
-    renamingTabId,
     setActiveTab,
     updateTabContent,
     updateTabName,
-    removeTab,
     handleLanguageChange,
     setRenamingTabId,
   } = useFileManager({
@@ -67,7 +66,7 @@ CodeEditorProps) {
     newFileLanguage,
     setNewFileName,
     setNewFileLanguage,
-    openNewFileModal: addNewFile, // Đổi tên để match với props của EditorHeader
+    openNewFileModal: addNewFile,
     handleCreateNewFile,
     setIsNewFileModalOpen,
   } = useNewFileModal({
@@ -92,6 +91,7 @@ CodeEditorProps) {
     "code"
   );
   const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
+  const [isExplorerVisible, setIsExplorerVisible] = useState(true);
 
   const {
     isCompiling,
@@ -158,18 +158,60 @@ CodeEditorProps) {
     setTestCases
   ]);
 
+  const handleRunClick = React.useCallback(async () => {
+    if (editorMode === "editor") {
+      setEditorMode("code");
+    }
+    await compileAndRun();
+  }, [editorMode, compileAndRun]);
+
+  const saveActiveFile = () => {
+    if (!activeFile) return;
+    
+    const blob = new Blob([activeFile.content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
+      // Existing Ctrl+B handler
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
         e.stopPropagation();
         await compileAndRun();
+      }
+      
+      // Add Ctrl+S handler
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+        saveActiveFile();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [compileAndRun]); 
+
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        e.stopPropagation();
+        await handleRunClick();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [handleRunClick]); 
 
   const handleContextMenu = (event: React.MouseEvent, id: string) => {
     event.preventDefault();
@@ -217,43 +259,8 @@ CodeEditorProps) {
       }
     );
 
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyD,
-      () => {
-        const selection = editor.getSelection();
-        const model = editor.getModel();
-
-        if (selection && model) {
-          if (selection.isEmpty()) {
-            const lineNumber = selection.startLineNumber;
-            const lineContent = model.getLineContent(lineNumber);
-            editor.executeEdits("", [
-              {
-                range: new monaco.Range(lineNumber, 1, lineNumber, 1),
-                text: lineContent + "\n",
-              },
-            ]);
-            editor.setPosition({
-              lineNumber: lineNumber + 1,
-              column: selection.startColumn,
-            });
-          } else {
-            const selectedText = model.getValueInRange(selection);
-            editor.executeEdits("", [
-              {
-                range: new monaco.Range(
-                  selection.endLineNumber,
-                  selection.endColumn,
-                  selection.endLineNumber,
-                  selection.endColumn
-                ),
-                text: selectedText,
-              },
-            ]);
-          }
-        }
-      }
-    );
+    addDuplicateLineCommand(editor, monaco);
+    addMoveLineCommands(editor, monaco);
   };
 
   const handleSubmit = async () => {
@@ -268,110 +275,126 @@ CodeEditorProps) {
     }
   };
 
+  const handleRenameFile = (id: string, newName: string) => {
+    updateTabName(id, newName);
+  };
+
   return (
     <div
-      className={`flex flex-col h-screen ${currentTheme.bg} ${currentTheme.text} overflow-hidden`}
+      className={`flex flex-col h-screen ${
+        theme === 'light' ? 'bg-white' : 'bg-[#1e1e1e]'
+      } ${currentTheme.text} overflow-hidden`}
     >
       <EditorHeader
-        tabs={tabs}
-        activeTab={activeTab}
         editorMode={editorMode}
         isCompiling={isCompiling}
         executionTime={executionTime}
         onAddFile={addNewFile}
-        onSelectTab={setActiveTab}
-        onRemoveTab={removeTab}
-        onContextMenu={handleContextMenu}
-        onRenameTab={updateTabName}
         onEditorModeChange={setEditorMode}
-        onCompileAndRun={compileAndRun}
-        renamingTabId={renamingTabId}
-        onRenameComplete={() => setRenamingTabId(null)}
+        onCompileAndRun={handleRunClick}
         onSubmit={onSubmit ? handleSubmit : undefined}
-        onLanguageChange={handleLanguageChange} // Sử dụng handleLanguageChange từ hook
+        onLanguageChange={handleLanguageChange}
         currentLanguage={activeFile?.language || defaultLanguage}
+        isExplorerVisible={isExplorerVisible}
+        toggleExplorer={() => setIsExplorerVisible(!isExplorerVisible)}
       />
-
-      <PanelGroup direction="horizontal" className="flex-1 overflow-auto">
-        <Panel 
-          id="editor-panel"
-          order={1}
-          defaultSize={editorMode === "editor" ? 100 : 80} 
-          minSize={20}
-        >
-          <MonacoEditor
-            language={activeFile?.language || "plaintext"}
-            value={activeFile?.content || ""}
-            path={activeFile?.name}
-            onChange={(value) => updateTabContent(activeTab, value)}
-            onMount={handleEditorDidMount}
-            theme={currentTheme.name}
-            options={{
-              fontFamily: "Cascadia Mono",
-              fontSize: 14,
-              lineHeight: 24,
-              suggestOnTriggerCharacters: true,
-              quickSuggestions: { other: true, comments: true, strings: true },
-              snippetSuggestions: "inline",
-              acceptSuggestionOnEnter: "on",
-              tabCompletion: "on",
-              wordBasedSuggestions: "allDocuments",
-              smoothScrolling: true, // Add smooth scrolling
-              scrollBeyondLastLine: false,
-              scrollbar: {
-                vertical: "auto",
-                horizontal: "auto",
-                useShadows: false,
-                verticalScrollbarSize: 8,
-                horizontalScrollbarSize: 8,
-                verticalSliderSize: 8,
-                horizontalSliderSize: 8,
-              },
-              suggest: {
-                localityBonus: true,
-                snippetsPreventQuickSuggestions: false,
-                showIcons: true,
-                showStatusBar: true,
-                preview: true,
-                showMethods: true,
-                showFunctions: true,
-                showConstructors: true,
-                showDeprecated: false,
-                matchOnWordStartOnly: false,
-              },
-              minimap: { enabled: false },
-            }}
-          />
-        </Panel>
-        {editorMode !== "editor" && (
-          <>
-            <ResizeHandle />
-            <Panel 
-              id="output-panel"
-              order={2}
-              defaultSize={20} 
-              minSize={5}
-            >
-              {editorMode === "test" ? (
-                <TestPanel
-                  testCases={testCases}
-                  onTestCaseChange={handleTestCaseChange}
-                  onAddTestCase={addTestCase}
-                  onRemoveTestCase={removeTestCase}
+      
+      <div className="flex-1 flex overflow-hidden">
+        <PanelGroup direction="horizontal" className="h-full">
+          {isExplorerVisible && (
+            <>
+              <Panel id="explorer-panel" order={1} defaultSize={15} minSize={10}>
+                <FileExplorer
+                  files={tabs}
+                  activeTab={activeTab}
+                  onSelectFile={setActiveTab}
+                  onContextMenu={handleContextMenu}
+                  onRenameFile={handleRenameFile}
                 />
-              ) : (
-                <InputOutputPanel
-                  currentTheme={currentTheme}
-                  testCase={testCase}
-                  output={output}
-                  onTestCaseChange={setTestCase}
-                  onOutputChange={setOutput}
-                />
-              )}
-            </Panel>
-          </>
-        )}
-      </PanelGroup>
+              </Panel>
+              <ResizeHandle className={`w-[1px] h-full ${theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'}`} />
+            </>
+          )}
+          <Panel 
+            id="editor-panel"
+            order={2}
+            defaultSize={editorMode === "editor" ? 100 : 80} 
+            minSize={20}
+          >
+            <MonacoEditor
+              language={activeFile?.language || "plaintext"}
+              value={activeFile?.content || ""}
+              path={activeFile?.name}
+              onChange={(value) => updateTabContent(activeTab, value)}
+              onMount={handleEditorDidMount}
+              theme={currentTheme.name}
+              options={{
+                fontFamily: "Cascadia Mono",
+                fontSize: 14,
+                lineHeight: 24,
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: { other: true, comments: true, strings: true },
+                snippetSuggestions: "inline",
+                acceptSuggestionOnEnter: "on",
+                tabCompletion: "on",
+                wordBasedSuggestions: "allDocuments",
+                smoothScrolling: true, // Add smooth scrolling
+                scrollBeyondLastLine: false,
+                scrollbar: {
+                  vertical: "auto",
+                  horizontal: "auto",
+                  useShadows: false,
+                  verticalScrollbarSize: 8,
+                  horizontalScrollbarSize: 8,
+                  verticalSliderSize: 8,
+                  horizontalSliderSize: 8,
+                },
+                suggest: {
+                  localityBonus: true,
+                  snippetsPreventQuickSuggestions: false,
+                  showIcons: true,
+                  showStatusBar: true,
+                  preview: true,
+                  showMethods: true,
+                  showFunctions: true,
+                  showConstructors: true,
+                  showDeprecated: false,
+                  matchOnWordStartOnly: false,
+                },
+                minimap: { enabled: false },
+              }}
+            />
+          </Panel>
+          {editorMode !== "editor" && (
+            <>
+              <ResizeHandle />
+              <Panel 
+                id="output-panel"
+                order={3}
+                defaultSize={20} 
+                minSize={5}
+              >
+                {editorMode === "test" ? (
+                  <TestPanel
+                    testCases={testCases}
+                    onTestCaseChange={handleTestCaseChange}
+                    onAddTestCase={addTestCase}
+                    onRemoveTestCase={removeTestCase}
+                  />
+                ) : (
+                  <InputOutputPanel
+                    currentTheme={currentTheme}
+                    testCase={testCase}
+                    output={output}
+                    onTestCaseChange={setTestCase}
+                    onOutputChange={setOutput}
+                  />
+                )}
+              </Panel>
+            </>
+          )}
+        </PanelGroup>
+      </div>
 
       {contextMenu && (
         <ContextMenu

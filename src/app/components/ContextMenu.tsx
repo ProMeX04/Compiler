@@ -1,39 +1,24 @@
-import { useEffect } from "react";
-import { useTheme } from "@/app/contexts/ThemeContext";
+import React from "react";
+import { createPortal } from "react-dom";
 
 interface ContextMenuProps {
   x: number;
   y: number;
   onClose: () => void;
   children: React.ReactNode;
-  // Add any additional props needed for parameterization
 }
 
-export function ContextMenu({
-  x,
-  y,
-  onClose,
-  children,
-  // ...other props...
-}: ContextMenuProps) {
-  const { theme } = useTheme();
-
-  useEffect(() => {
-    const handleClick = () => onClose();
-    window.addEventListener("click", handleClick);
-    return () => window.removeEventListener("click", handleClick);
-  }, [onClose]);
-
-  return (
+export function ContextMenu({ x, y, onClose, children }: ContextMenuProps) {
+  return createPortal(
     <div
-      className={`fixed z-50 ${
-        theme === "light"
-          ? "bg-white border-gray-200"
-          : "bg-zinc-800 border-zinc-700"
-      } border rounded-lg shadow-lg py-1.5 transition-all duration-200 min-w-[120px]`}
-      style={{ left: x, top: y }}
+      className="fixed z-50"
+      style={{ top: y, left: x }}
+      onClick={onClose}
     >
-      {children}
-    </div>
+      <div className="bg-white dark:bg-[#252526] shadow-lg rounded-md overflow-hidden border dark:border-[#37373d]">
+        {children}
+      </div>
+    </div>,
+    document.body
   );
 }
