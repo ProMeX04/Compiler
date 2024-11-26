@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./styles/globals.css";
-import { ClientProviders } from './providers/ClientProviders';
-
+import { ClientProviders } from "./providers/ClientProviders";
 
 export const metadata: Metadata = {
   title: "Compiler",

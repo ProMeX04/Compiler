@@ -1,4 +1,3 @@
-
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 
 export function addDuplicateLineCommand(editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) {
@@ -37,59 +36,24 @@ export function addDuplicateLineCommand(editor: Monaco.editor.IStandaloneCodeEdi
   );
 }
 
-export function addMoveLineCommands(editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) {
-  // Move line up
-  editor.addCommand(
-    monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.UpArrow,
-    () => {
-      const selection = editor.getSelection();
-      if (!selection) return;
-      
-      const lineNumber = selection.startLineNumber;
-      if (lineNumber <= 1) return;
+export function addMouseWheelZoom(editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) {
+  const domNode = editor.getDomNode();
+  if (!domNode) return;
 
-      editor.executeEdits('', [{
-        range: new monaco.Range(lineNumber - 1, 1, lineNumber, 1),
-        text: editor.getModel()?.getLineContent(lineNumber) + '\n'
-      }, {
-        range: new monaco.Range(lineNumber, 1, lineNumber + 1, 1),
-        text: editor.getModel()?.getLineContent(lineNumber - 1) + '\n'
-      }]);
+  domNode.addEventListener('wheel', (event) => {
+    if (event.ctrlKey || event.metaKey) {
+      const delta = event.deltaY > 0 ? -1 : 1;
+      const currentFontSize = editor.getOption(monaco.editor.EditorOption.fontSize);
+      const newFontSize = Math.max(8, Math.min(32, currentFontSize + delta));
+      const newLineHeight = newFontSize * 1.5; // Adjust line height proportionally
       
-      editor.setSelection(new monaco.Selection(
-        lineNumber - 1,
-        selection.startColumn,
-        lineNumber - 1,
-        selection.endColumn
-      ));
+      editor.updateOptions({
+        fontSize: newFontSize,
+        lineHeight: newLineHeight
+      });
+
+      event.preventDefault();
+      event.stopPropagation();
     }
-  );
-
-  // Move line down
-  editor.addCommand(
-    monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.DownArrow,
-    () => {
-      const selection = editor.getSelection();
-      if (!selection) return;
-      
-      const lineNumber = selection.startLineNumber;
-      const lastLineNumber = editor.getModel()?.getLineCount() || 0;
-      if (lineNumber >= lastLineNumber) return;
-
-      editor.executeEdits('', [{
-        range: new monaco.Range(lineNumber, 1, lineNumber + 1, 1),
-        text: editor.getModel()?.getLineContent(lineNumber + 1) + '\n'
-      }, {
-        range: new monaco.Range(lineNumber + 1, 1, lineNumber + 2, 1),
-        text: editor.getModel()?.getLineContent(lineNumber) + '\n'
-      }]);
-      
-      editor.setSelection(new monaco.Selection(
-        lineNumber + 1,
-        selection.startColumn,
-        lineNumber + 1,
-        selection.endColumn
-      ));
-    }
-  );
+  }, { passive: false });
 }

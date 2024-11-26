@@ -19,7 +19,7 @@ import {
 } from "./Editor";
 import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
-import { addDuplicateLineCommand, addMoveLineCommands } from "./Editor/shortcuts";
+import { addDuplicateLineCommand } from "./Editor/shortcuts";
 
 export interface CodeEditorProps {
   defaultContent?: string;
@@ -181,27 +181,15 @@ CodeEditorProps) {
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
-      // Existing Ctrl+B handler
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
-        e.preventDefault();
-        e.stopPropagation();
-        await compileAndRun();
-      }
-      
       // Add Ctrl+S handler
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         e.stopPropagation();
         saveActiveFile();
+        return;
       }
-    };
 
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [compileAndRun]); 
-
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
+      // Use handleRunClick for Ctrl+B
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
         e.stopPropagation();
@@ -211,7 +199,7 @@ CodeEditorProps) {
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [handleRunClick]); 
+  }, [handleRunClick, saveActiveFile]);
 
   const handleContextMenu = (event: React.MouseEvent, id: string) => {
     event.preventDefault();
@@ -260,7 +248,6 @@ CodeEditorProps) {
     );
 
     addDuplicateLineCommand(editor, monaco);
-    addMoveLineCommands(editor, monaco);
   };
 
   const handleSubmit = async () => {

@@ -10,11 +10,10 @@ interface UseNewFileModalProps {
 
 export function useNewFileModal({ defaultLanguage, templateCodes, onFileCreated }: UseNewFileModalProps) {
   const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
-  const [newFileName, setNewFileName] = useState("Main");
+  const [newFileName, setNewFileName] = useState("main");
   const [newFileLanguage, setNewFileLanguage] = useState(defaultLanguage);
 
   const openNewFileModal = () => {
-    setNewFileName("Main");
     setNewFileLanguage(defaultLanguage);
     setIsNewFileModalOpen(true);
   };

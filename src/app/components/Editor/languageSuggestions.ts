@@ -36,27 +36,6 @@ export function registerLanguageSuggestions(
     },
   ];
 
-  const javascriptSuggestions = [
-    {
-      label: "function",
-      kind: CompletionItemKind.Snippet,
-      insertText: "function ${1:name}(${2:params}) {\n\t${0}\n}",
-      documentation: "Create a new function",
-    },
-    {
-      label: "arrow",
-      kind: CompletionItemKind.Snippet,
-      insertText: "(${1:params}) => {\n\t${0}\n}",
-      documentation: "Create an arrow function",
-    },
-    {
-      label: "class",
-      kind: CompletionItemKind.Snippet,
-      insertText:
-        "class ${1:Name} {\n\tconstructor(${2:params}) {\n\t\t${0}\n\t}\n}",
-      documentation: "Create a new class",
-    },
-  ];
 
   const javaSuggestions = [
     {
@@ -76,6 +55,30 @@ export function registerLanguageSuggestions(
       kind: CompletionItemKind.Snippet,
       insertText: "System.out.println(${0});",
       documentation: "Print to console",
+    },
+    {
+      label: "for",
+      kind: CompletionItemKind.Snippet,
+      insertText: "for (int ${1:i} = 0; ${1:i} < ${2:count}; ${1:i}++) {\n\t${0}\n}",
+      documentation: "For loop",
+    },
+    {
+      label: "if",
+      kind: CompletionItemKind.Snippet,
+      insertText: "if (${1:condition}) {\n\t${0}\n}",
+      documentation: "If statement",
+    },
+    {
+      label: "while",
+      kind: CompletionItemKind.Snippet,
+      insertText: "while (${1:condition}) {\n\t${0}\n}",
+      documentation: "While loop",
+    },
+    {
+      label: "trycatch",
+      kind: CompletionItemKind.Snippet,
+      insertText: "try {\n\t${0}\n} catch (${1:Exception e}) {\n\t${2}\n}",
+      documentation: "Try-catch block",
     },
   ];
 
@@ -123,8 +126,6 @@ export function registerLanguageSuggestions(
 
   const languagesSuggestions = {
     python: pythonSuggestions,
-    javascript: javascriptSuggestions,
-    typescript: javascriptSuggestions,
     java: javaSuggestions,
     cpp: cppSuggestions,
   };

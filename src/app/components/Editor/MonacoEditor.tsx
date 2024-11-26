@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
+import { addMouseWheelZoom } from './shortcuts';
 
 const MonacoEditorBase = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -61,6 +62,7 @@ export function MonacoEditor({
     if (onMount) {
       onMount(editor, monaco);
     }
+    addMouseWheelZoom(editor, monaco);
   };
 
   return (
