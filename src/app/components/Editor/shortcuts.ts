@@ -36,21 +36,17 @@ export function addDuplicateLineCommand(editor: Monaco.editor.IStandaloneCodeEdi
   );
 }
 
-export function addMouseWheelZoom(editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) {
+export function addMouseWheelZoom(editor: Monaco.editor.IStandaloneCodeEditor) {
   const domNode = editor.getDomNode();
   if (!domNode) return;
 
   domNode.addEventListener('wheel', (event) => {
     if (event.ctrlKey || event.metaKey) {
-      const delta = event.deltaY > 0 ? -1 : 1;
-      const currentFontSize = editor.getOption(monaco.editor.EditorOption.fontSize);
-      const newFontSize = Math.max(8, Math.min(32, currentFontSize + delta));
-      const newLineHeight = newFontSize * 1.5; // Adjust line height proportionally
-      
-      editor.updateOptions({
-        fontSize: newFontSize,
-        lineHeight: newLineHeight
-      });
+      if (event.deltaY > 0) {
+        editor.trigger('mouseWheel', 'editor.action.fontZoomOut', null);
+      } else {
+        editor.trigger('mouseWheel', 'editor.action.fontZoomIn', null);
+      }
 
       event.preventDefault();
       event.stopPropagation();

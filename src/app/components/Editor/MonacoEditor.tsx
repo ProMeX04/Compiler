@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { addMouseWheelZoom } from './shortcuts';
+import { registerLanguageSuggestions } from './languageSuggestions';
 
 const MonacoEditorBase = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -16,6 +17,8 @@ interface MonacoEditorProps {
   options?: Monaco.editor.IStandaloneEditorConstructionOptions;
   height?: string | number;
 }
+
+let suggestionsRegistered = false;
 
 export function MonacoEditor({
   language,
@@ -46,23 +49,55 @@ export function MonacoEditor({
     },
     lineNumbersMinChars: 2,
     lineDecorationsWidth: 0,
-    lineNumbers: 'on',
-    wordWrap: 'on', 
-    wrappingIndent: 'deepIndent', 
+    lineNumbers: "on",
+    wordWrap: "on",
+    wrappingIndent: "deepIndent",
+    suggestOnTriggerCharacters: true,
+    quickSuggestions: { other: true, comments: true, strings: true },
+    snippetSuggestions: "inline",
+    acceptSuggestionOnEnter: "on",
+    tabCompletion: "on",
+    wordBasedSuggestions: "allDocuments",
+    parameterHints: {
+      enabled: true,
+    },
+    suggest: {
+      localityBonus: true,
+      snippetsPreventQuickSuggestions: false,
+      showIcons: true,
+      showStatusBar: true,
+      preview: true,
+      showMethods: true,
+      showFunctions: true,
+      showConstructors: true,
+      showDeprecated: false,
+      matchOnWordStartOnly: false,
+      filterGraceful: false,
+      showWords: true,
+      showSnippets: true,
+      showInlineDetails: true,
+      shareSuggestSelections: true,
+      selectionMode: 'never',
+      insertMode: 'insert'
+    },
+    suggestSelection: 'first',
+    suggestLineHeight: 24,
   };
 
   const handleEditorDidMount = async (
     editor: Monaco.editor.IStandaloneCodeEditor,
     monaco: typeof Monaco
   ) => {
-    if (typeof window !== 'undefined') {
-      const { registerLanguageSuggestions } = await import('./languageSuggestions');
-      registerLanguageSuggestions(monaco);
-    }
     if (onMount) {
       onMount(editor, monaco);
     }
-    addMouseWheelZoom(editor, monaco);
+    
+    addMouseWheelZoom(editor);
+    
+    if (typeof window !== 'undefined' && !suggestionsRegistered) {
+      registerLanguageSuggestions(monaco);
+      suggestionsRegistered = true;
+    }
   };
 
   return (

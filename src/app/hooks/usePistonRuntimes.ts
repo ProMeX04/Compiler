@@ -31,7 +31,6 @@ export function usePistonRuntimes() {
     queryFn: async () => {
       const runtimes = await getRuntimes();
       const versionMap = buildRuntimeVersionMap(runtimes);
-      console.log("Fetched runtime versions:", versionMap); // Debug log
       return versionMap;
     },
     // Remove initialData and enabled since they're causing issues

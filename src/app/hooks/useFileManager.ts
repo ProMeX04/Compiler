@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { FileTab as FileTabType } from '@/app/types/types';
 import { LANGUAGE_CONFIGS, getLanguageExtension } from '@/app/config/languageConfig';
+import { useFirebaseAuth } from './useFirebaseAuth';
+import { collection, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
 interface UseFileManagerProps {
   defaultContent?: string;
@@ -10,25 +13,18 @@ interface UseFileManagerProps {
 }
 
 export function useFileManager({
-  defaultContent = "",
-  defaultFileName = "main",
-  defaultLanguage = "python",
   templateCodes = {},
 }: UseFileManagerProps) {
-  const [tabs, setTabs] = useState<FileTabType[]>([
-    {
-      id: "1",
-      name: `${defaultFileName}.${getLanguageExtension(defaultLanguage)}`,
-      content: defaultContent || templateCodes[defaultLanguage] || LANGUAGE_CONFIGS[defaultLanguage]?.defaultContent || "",
-      language: defaultLanguage,
-    },
-  ]);
-  const [activeTab, setActiveTab] = useState<string>("1");
-  const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
+  const { user } = useFirebaseAuth();
+  const [tabs, setTabs] = useState<FileTabType[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("");
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null); // <--- Added state
 
   const updateTabContent = (id: string, newContent: string) => {
     setTabs((prev) =>
-      prev.map((tab) => (tab.id === id ? { ...tab, content: newContent } : tab))
+      prev.map((tab) =>
+        tab.id === id ? { ...tab, content: newContent } : tab
+      )
     );
   };
 
@@ -78,6 +74,37 @@ export function useFileManager({
     );
   };
 
+  const addFile = async () => {
+    if (user) {
+      const filesCollection = collection(db, 'userCodes', user.uid, 'files');
+      const newFile = {
+        name: 'New File',
+        content: '',
+        language: 'javascript'
+      };
+      const docRef = await addDoc(filesCollection, newFile);
+      const createdFile: FileTabType = { id: docRef.id, ...newFile };
+      setTabs(prev => [...prev, createdFile]);
+      setActiveTab(docRef.id); 
+    }
+  };
+
+  const updateFile = async (fileId: string, updatedData: Partial<FileTabType>) => {
+    if (user) {
+      const fileRef = doc(db, 'userCodes', user.uid, 'files', fileId);
+      await setDoc(fileRef, updatedData, { merge: true }); 
+      setTabs(prevTabs => prevTabs.map(file => file.id === fileId ? { ...file, ...updatedData } : file));
+    }
+  };
+
+  const deleteFile = async (fileId: string) => {
+    if (user) {
+      const fileRef = doc(db, 'userCodes', user.uid, 'files', fileId);
+      await deleteDoc(fileRef);
+      setTabs(prevTabs => prevTabs.filter(file => file.id !== fileId));
+    }
+  };
+
   const activeFile = tabs.find((tab) => tab.id === activeTab);
 
   return {
@@ -86,11 +113,14 @@ export function useFileManager({
     activeTab,
     setActiveTab,
     activeFile,
-    renamingTabId,
-    setRenamingTabId,
+    renamingTabId, // Ensure this is now defined
+    setRenamingTabId, // Ensure this is now defined
     updateTabContent,
     updateTabName,
     removeTab,
     handleLanguageChange,
+    addFile,
+    updateFile,
+    deleteFile,
   };
 }

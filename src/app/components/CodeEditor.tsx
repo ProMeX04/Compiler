@@ -4,13 +4,17 @@ import { Panel, PanelGroup } from "react-resizable-panels";
 import { EditorHeader } from "@/app/components/EditorHeader";
 import { TestPanel } from "@/app/components/Editor/TestPanel";
 import { ContextMenu } from "@/app/components/ContextMenu";
-import { CursorPosition, TestCase } from "@/app/types/types";
+import { CursorPosition, TestCase, FileTab } from "@/app/types/types";
 import "@szhsin/react-menu/dist/index.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useFileManager } from "@/app/hooks/useFileManager";
 import { useNewFileModal } from "@/app/hooks/useNewFileModal";
 import { usePistonRuntimes } from "@/app/hooks/usePistonRuntimes";
+import { db } from '@/app/firebaseConfig'; // Added import
+import { doc, setDoc, collection, getDocs } from 'firebase/firestore'; // Added Firestore functions
+import { useFirebaseAuth } from '@/app/hooks/useFirebaseAuth'; // Ensure authentication hook is imported
+
 import {
   MonacoEditor,
   NewFileModal,
@@ -41,18 +45,18 @@ export function CodeEditor({
   initialTestCases = [{ input: "", expectedOutput: "" }],
   templateCodes = {},
   onSubmit,
-}: // ...other props...
-CodeEditorProps) {
+}: CodeEditorProps) {
+  const { user } = useFirebaseAuth(); // Access the authenticated user
   const {
     tabs,
     setTabs,
     activeTab,
     activeFile,
     setActiveTab,
-    updateTabContent,
+    setRenamingTabId, // Now defined
     updateTabName,
     handleLanguageChange,
-    setRenamingTabId,
+    addFile,
   } = useFileManager({
     defaultContent,
     defaultFileName,
@@ -66,7 +70,6 @@ CodeEditorProps) {
     newFileLanguage,
     setNewFileName,
     setNewFileLanguage,
-    openNewFileModal: addNewFile,
     handleCreateNewFile,
     setIsNewFileModalOpen,
   } = useNewFileModal({
@@ -79,7 +82,6 @@ CodeEditorProps) {
   });
 
   const { getLatestVersion } = usePistonRuntimes();
-
   const [testCase, setTestCase] = useState("");
   const [output, setOutput] = useState("");
   const [, setCursorPosition] = useState<CursorPosition>({
@@ -99,7 +101,7 @@ CodeEditorProps) {
     executionTime,
     setExecutionTime,
     executeCodeWithMetrics,
-    runTests
+    runTests,
   } = useCodeExecution();
 
   const [contextMenu, setContextMenu] = useState<{
@@ -125,7 +127,7 @@ CodeEditorProps) {
         const updatedTestCases = await runTests(
           activeFile.language,
           version,
-          activeFile.content, 
+          activeFile.content,
           testCases
         );
         setTestCases(updatedTestCases);
@@ -140,7 +142,9 @@ CodeEditorProps) {
         setExecutionTime(result.executionTime);
       }
     } catch (error) {
-      setOutput(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setOutput(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     } finally {
       setIsCompiling(false);
     }
@@ -155,7 +159,7 @@ CodeEditorProps) {
     setOutput,
     setExecutionTime,
     setIsCompiling,
-    setTestCases
+    setTestCases,
   ]);
 
   const handleRunClick = React.useCallback(async () => {
@@ -167,10 +171,10 @@ CodeEditorProps) {
 
   const saveActiveFile = () => {
     if (!activeFile) return;
-    
-    const blob = new Blob([activeFile.content], { type: 'text/plain' });
+
+    const blob = new Blob([activeFile.content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = activeFile.name;
     document.body.appendChild(a);
@@ -250,12 +254,53 @@ CodeEditorProps) {
     addDuplicateLineCommand(editor, monaco);
   };
 
+  useEffect(() => {
+    const fetchUserFiles = async () => {
+      if (user) {
+        const filesCollection = collection(db, 'userCodes', user.uid, 'files');
+        const querySnapshot = await getDocs(filesCollection);
+        const userFiles = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setTabs(userFiles as FileTab[]);
+      }
+    };
+
+    fetchUserFiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const handleSaveFile = async (file: FileTab) => {
+    if (user) {
+      const fileRef = doc(db, 'userCodes', user.uid, 'files', file.id);
+      await setDoc(fileRef, {
+        name: file.name,
+        content: file.content,
+        language: file.language
+      }, { merge: true }); // Changed to setDoc with merge
+    }
+  };
+
+
+  const handleTabContentChange = (fileId: string, newContent: string) => {
+    setTabs(prevTabs => prevTabs.map(file => file.id === fileId ? { ...file, content: newContent } : file));
+    const updatedFile = tabs.find(file => file.id === fileId);
+    if (updatedFile) {
+      handleSaveFile({ ...updatedFile, content: newContent });
+    }
+  };
+
   const handleSubmit = async () => {
     if (!activeFile || !onSubmit) return;
 
     setIsCompiling(true);
     try {
       await onSubmit(activeFile.content, activeFile.language, testCases);
+      if (user) {
+        const docRef = doc(db, 'userCodes', user.uid);
+        await setDoc(docRef, { code: activeFile.content }); // Save code to Firestore
+      }
     } catch {
     } finally {
       setIsCompiling(false);
@@ -264,33 +309,40 @@ CodeEditorProps) {
 
   const handleRenameFile = (id: string, newName: string) => {
     updateTabName(id, newName);
+    setRenamingTabId(null); // Optionally reset renaming state
   };
 
   return (
     <div
       className={`flex flex-col h-screen ${
-        theme === 'light' ? 'bg-white' : 'bg-[#1e1e1e]'
+        theme === "light" ? "bg-white" : "bg-[#1e1e1e]"
       } ${currentTheme.text} overflow-hidden`}
     >
-      <EditorHeader
-        editorMode={editorMode}
-        isCompiling={isCompiling}
-        executionTime={executionTime}
-        onAddFile={addNewFile}
-        onEditorModeChange={setEditorMode}
-        onCompileAndRun={handleRunClick}
-        onSubmit={onSubmit ? handleSubmit : undefined}
-        onLanguageChange={handleLanguageChange}
-        currentLanguage={activeFile?.language || defaultLanguage}
-        isExplorerVisible={isExplorerVisible}
-        toggleExplorer={() => setIsExplorerVisible(!isExplorerVisible)}
-      />
-      
+      <div className="relative z-40">
+        <EditorHeader
+          editorMode={editorMode}
+          isCompiling={isCompiling}
+          executionTime={executionTime}
+          onAddFile={addFile}
+          onEditorModeChange={setEditorMode}
+          onCompileAndRun={handleRunClick}
+          onSubmit={onSubmit ? handleSubmit : undefined}
+          onLanguageChange={handleLanguageChange}
+          currentLanguage={activeFile?.language || defaultLanguage}
+          isExplorerVisible={isExplorerVisible}
+          toggleExplorer={() => setIsExplorerVisible(!isExplorerVisible)}
+        />
+      </div>
       <div className="flex-1 flex overflow-hidden">
         <PanelGroup direction="horizontal" className="h-full">
           {isExplorerVisible && (
             <>
-              <Panel id="explorer-panel" order={1} defaultSize={15} minSize={10}>
+              <Panel
+                id="explorer-panel"
+                order={1}
+                defaultSize={15}
+                minSize={10}
+              >
                 <FileExplorer
                   files={tabs}
                   activeTab={activeTab}
@@ -299,20 +351,24 @@ CodeEditorProps) {
                   onRenameFile={handleRenameFile}
                 />
               </Panel>
-              <ResizeHandle className={`w-[1px] h-full ${theme === 'light' ? 'bg-gray-200' : 'bg-zinc-800'}`} />
+              <ResizeHandle
+                className={`w-[1px] h-full ${
+                  theme === "light" ? "bg-gray-200" : "bg-zinc-800"
+                }`}
+              />
             </>
           )}
-          <Panel 
+          <Panel
             id="editor-panel"
             order={2}
-            defaultSize={editorMode === "editor" ? 100 : 80} 
+            defaultSize={editorMode === "editor" ? 100 : 80}
             minSize={20}
           >
             <MonacoEditor
               language={activeFile?.language || "plaintext"}
               value={activeFile?.content || ""}
               path={activeFile?.name}
-              onChange={(value) => updateTabContent(activeTab, value)}
+              onChange={(value) => handleTabContentChange(activeTab, value)}
               onMount={handleEditorDidMount}
               theme={currentTheme.name}
               options={{
@@ -320,7 +376,11 @@ CodeEditorProps) {
                 fontSize: 14,
                 lineHeight: 24,
                 suggestOnTriggerCharacters: true,
-                quickSuggestions: { other: true, comments: true, strings: true },
+                quickSuggestions: {
+                  other: true,
+                  comments: true,
+                  strings: true,
+                },
                 snippetSuggestions: "inline",
                 acceptSuggestionOnEnter: "on",
                 tabCompletion: "on",
@@ -355,12 +415,7 @@ CodeEditorProps) {
           {editorMode !== "editor" && (
             <>
               <ResizeHandle />
-              <Panel 
-                id="output-panel"
-                order={3}
-                defaultSize={20} 
-                minSize={5}
-              >
+              <Panel id="output-panel" order={3} defaultSize={20} minSize={5}>
                 {editorMode === "test" ? (
                   <TestPanel
                     testCases={testCases}

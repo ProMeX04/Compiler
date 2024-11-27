@@ -8,9 +8,14 @@ import {
   FaSpinner,
   FaExpand,
   FaBars,
+  FaUser,
 } from "react-icons/fa";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { LANGUAGE_CONFIGS } from "@/app/config/languageConfig";
+import { useFirebaseAuth } from "@/app/hooks/useFirebaseAuth";
+import { LoginModal } from "@/app/components/LoginModal";
+import { useState, useRef, useEffect } from "react";
+import Image from 'next/image';
 
 interface EditorHeaderProps {
   editorMode: "code" | "test" | "editor";
@@ -39,7 +44,11 @@ export function EditorHeader({
   toggleExplorer,
 }: EditorHeaderProps) {
   const { theme, toggleTheme } = useTheme();
-    const buttonBaseClass = "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors";
+  const { user } = useFirebaseAuth();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalPosition, setLoginModalPosition] = useState({ top: 0, left: 0 });
+  const loginButtonRef = useRef<HTMLButtonElement>(null);
+  const buttonBaseClass = "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors";
   const buttonActiveClass = theme === 'light' 
     ? "bg-gray-200 text-gray-800" 
     : "bg-zinc-700 text-white";
@@ -53,6 +62,25 @@ export function EditorHeader({
     }
     onCompileAndRun();
   };
+
+  const handleUserIconClick = () => {
+    if (loginButtonRef.current) {
+      const rect = loginButtonRef.current.getBoundingClientRect();
+      
+      setLoginModalPosition({ 
+        top: rect.bottom + 5, // Add small offset from button
+        left: Math.max(10, rect.right - 320) // Align right edge with some padding
+      });
+    }
+    setIsLoginModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (user) {
+      // This effect could be used to notify CodeEditor to fetch user code
+      // Alternatively, CodeEditor handles fetching based on user context
+    }
+  }, [user]);
 
   return (
     <div className="flex flex-col">
@@ -182,9 +210,29 @@ export function EditorHeader({
             >
               {theme === "dark" ? <FaSun size={11} /> : <FaMoon size={11} />}
             </button>
+
+            {/* User Icon */}
+            <button
+              ref={loginButtonRef}
+              onClick={handleUserIconClick}
+              className={`${buttonBaseClass} ${buttonInactiveClass}`}
+              title="User"
+            >
+              {user && user.photoURL ? (
+                <Image src={user.photoURL} alt="User Avatar" width={24} height={24} className="rounded-full" />
+              ) : (
+                <FaUser size={11} />
+              )}
+            </button>
           </div>
         </div>
       </div>
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        position={loginModalPosition}
+      />
     </div>
   );
 }
