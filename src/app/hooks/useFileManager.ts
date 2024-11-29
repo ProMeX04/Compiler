@@ -18,18 +18,18 @@ export function useFileManager({
 }: UseFileManagerProps) {
   const { user } = useFirebaseAuth();
   const [tabs, setTabs] = useState<FileTabType[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null); // <--- Added state
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  // Remove the user-dependent loading effect and only load from IndexedDB
+  // Không tự động set activeTab khi load files
   useEffect(() => {
     const loadFiles = async () => {
       const files = await getAllFilesFromIDB();
       if (files.length > 0) {
         setTabs(files);
-        setActiveTab(files[0].id);
+        // Removed auto-setting of activeTab
       }
     };
     loadFiles();
@@ -114,6 +114,7 @@ export function useFileManager({
     }
   };
 
+  // Sửa lại addFile để không tự động set activeTab
   const addFile = async () => {
     const newFile = {
       id: String(Date.now()),
@@ -124,7 +125,7 @@ export function useFileManager({
     };
     await saveFileToIDB(newFile);
     setTabs(prev => [...prev, newFile]);
-    setActiveTab(newFile.id);
+    // Người dùng phải click vào file để set activeTab
   };
 
   const updateFile = async (fileId: string, updatedData: Partial<FileTabType>) => {

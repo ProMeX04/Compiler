@@ -1,3 +1,4 @@
+import React, { memo, useCallback } from "react";
 import {
   FaPlus,
   FaSun,
@@ -19,6 +20,30 @@ import { LoginModal } from "@/app/components/LoginModal";
 import { useState, useRef, useEffect } from "react";
 import Image from 'next/image';
 
+// Extract button styles to constants
+const BUTTON_BASE = "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors";
+const BUTTON_ACTIVE = (theme: string) => 
+  theme === 'light' ? "bg-gray-200 text-gray-800" : "bg-zinc-700 text-white";
+const BUTTON_INACTIVE = (theme: string) =>
+  theme === 'light' ? "hover:bg-gray-200 text-gray-600" : "hover:bg-zinc-800 text-zinc-300";
+
+// Create reusable button component
+const HeaderButton = memo(
+  React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+    ({ onClick, disabled, className, children }, ref) => (
+      <button
+        ref={ref}
+        onClick={onClick}
+        disabled={disabled}
+        className={`${BUTTON_BASE} ${className}`}
+      >
+        {children}
+      </button>
+    )
+  )
+);
+HeaderButton.displayName = "HeaderButton";
+
 interface EditorHeaderProps {
   editorMode: "code" | "test" | "editor";
   isCompiling: boolean;
@@ -38,7 +63,7 @@ interface EditorHeaderProps {
   lastSyncTime: Date | null; // Add this
 }
 
-export function EditorHeader({
+export const EditorHeader = memo(function EditorHeader({
   editorMode,
   isCompiling,
   executionTime,
@@ -60,20 +85,14 @@ export function EditorHeader({
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginModalPosition, setLoginModalPosition] = useState({ top: 0, left: 0 });
   const loginButtonRef = useRef<HTMLButtonElement>(null);
-  const buttonBaseClass = "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors";
-  const buttonActiveClass = theme === 'light' 
-    ? "bg-gray-200 text-gray-800" 
-    : "bg-zinc-700 text-white";
-  const buttonInactiveClass = theme === 'light'
-    ? "hover:bg-gray-200 text-gray-600"
-    : "hover:bg-zinc-800 text-zinc-300";
 
-  const handleRunClick = () => {
+  // Memoize handlers
+  const handleRunClick = useCallback(() => {
     if (editorMode === "editor") {
       onEditorModeChange("code");
     }
     onCompileAndRun();
-  };
+  }, [editorMode, onEditorModeChange, onCompileAndRun]);
 
   const handleUserIconClick = () => {
     if (loginButtonRef.current) {
@@ -104,34 +123,30 @@ export function EditorHeader({
       >
         {/* Left section remains unchanged */}
         <div className="flex-1 flex items-center gap-1">
-          <button
+          <HeaderButton
             onClick={toggleExplorer}
-            className={`${buttonBaseClass} ${buttonInactiveClass}`}
+            className={BUTTON_INACTIVE(theme)}
           >
             <FaBars className="w-3 h-3" />
-          </button>
-          <button
+          </HeaderButton>
+          <HeaderButton
             onClick={onAddFile}
-            className={`${buttonBaseClass} ${buttonInactiveClass}`}
+            className={BUTTON_INACTIVE(theme)}
           >
             <FaPlus className="w-3 h-3" />
-          </button>
-          <button
+          </HeaderButton>
+          <HeaderButton
             onClick={handleRunClick}
             disabled={isCompiling}
             title="Run (Ctrl+B)"
-            className={`${buttonBaseClass} ${
-              isCompiling
-                ? "opacity-50 cursor-not-allowed"
-                : buttonInactiveClass
-            }`}
+            className={isCompiling ? "opacity-50 cursor-not-allowed" : BUTTON_INACTIVE(theme)}
           >
             {isCompiling ? (
               <FaSpinner className="animate-spin w-3 h-3" />
             ) : (
               <FaPlay className="w-3 h-3" />
             )}
-          </button>
+          </HeaderButton>
           {executionTime !== null && (
             <span
               className={`text-[11px] ${
@@ -146,13 +161,13 @@ export function EditorHeader({
         {/* Center/Mid section */}
         <div className="flex items-center gap-1.5">
           {onSubmit && (
-            <button
+            <HeaderButton
               onClick={onSubmit}
-              className={`${buttonBaseClass} bg-blue-500 text-white hover:bg-blue-600`}
+              className="bg-blue-500 text-white hover:bg-blue-600"
               disabled={isCompiling}
             >
               Submit
-            </button>
+            </HeaderButton>
           )}
 
           <div className="flex items-center gap-1.5">
@@ -162,46 +177,34 @@ export function EditorHeader({
                 theme === "light" ? "bg-gray-200/50" : "bg-zinc-800/50"
               }`}
             >
-              <button
+              <HeaderButton
                 onClick={() => onEditorModeChange("code")}
-                className={`${buttonBaseClass} ${
-                  editorMode === "code"
-                    ? buttonActiveClass
-                    : buttonInactiveClass
-                }`}
+                className={editorMode === "code" ? BUTTON_ACTIVE(theme) : BUTTON_INACTIVE(theme)}
                 title="Run Code"
               >
                 <FaCode size={11} />
-              </button>
-              <button
+              </HeaderButton>
+              <HeaderButton
                 onClick={() => onEditorModeChange("test")}
-                className={`${buttonBaseClass} ${
-                  editorMode === "test"
-                    ? buttonActiveClass
-                    : buttonInactiveClass
-                }`}
+                className={editorMode === "test" ? BUTTON_ACTIVE(theme) : BUTTON_INACTIVE(theme)}
                 title="Test Cases"
               >
                 <FaFlask size={11} />
-              </button>
-              <button
+              </HeaderButton>
+              <HeaderButton
                 onClick={() => onEditorModeChange("editor")}
-                className={`${buttonBaseClass} ${
-                  editorMode === "editor"
-                    ? buttonActiveClass
-                    : buttonInactiveClass
-                }`}
+                className={editorMode === "editor" ? BUTTON_ACTIVE(theme) : BUTTON_INACTIVE(theme)}
                 title="Full Screen"
               >
                 <FaExpand size={11} />
-              </button>
+              </HeaderButton>
             </div>
 
             {/* Language Selector */}
             <select
               value={currentLanguage}
               onChange={(e) => onLanguageChange(e.target.value)}
-              className={`${buttonBaseClass} ${buttonInactiveClass} bg-transparent cursor-pointer outline-none`}
+              className={`${BUTTON_BASE} ${BUTTON_INACTIVE(theme)} bg-transparent cursor-pointer outline-none`}
             >
               {Object.entries(LANGUAGE_CONFIGS).map(([lang, config]) => (
                 <option
@@ -215,24 +218,24 @@ export function EditorHeader({
             </select>
 
             {/* Theme Toggle */}
-            <button
+            <HeaderButton
               onClick={toggleTheme}
-              className={`${buttonBaseClass} ${buttonInactiveClass}`}
+              className={BUTTON_INACTIVE(theme)}
               title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
             >
               {theme === "dark" ? <FaSun size={11} /> : <FaMoon size={11} />}
-            </button>
+            </HeaderButton>
           </div>
         </div>
 
         {/* Right section with cloud sync and user */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 border-r dark:border-zinc-700 pr-2">
-            <button
+            <HeaderButton
               onClick={syncWithCloud}
               disabled={isSyncing}
               title="Save changes to cloud storage"
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md ${
+              className={`${
                 theme === "light" 
                   ? "text-blue-600 hover:bg-blue-50" 
                   : "text-blue-400 hover:bg-blue-900/30"
@@ -246,12 +249,12 @@ export function EditorHeader({
                   <span className="text-xs">Save</span>
                 </>
               )}
-            </button>
-            <button
+            </HeaderButton>
+            <HeaderButton
               onClick={pullFromCloud}
               disabled={isSyncing}
               title="Revert to last saved version"
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md ${
+              className={`${
                 theme === "light" 
                   ? "text-orange-600 hover:bg-orange-50" 
                   : "text-orange-400 hover:bg-orange-900/30"
@@ -265,7 +268,7 @@ export function EditorHeader({
                   <span className="text-xs">Back</span>
                 </>
               )}
-            </button>
+            </HeaderButton>
           </div>
           {lastSyncTime && (
             <span className="text-xs text-gray-500">
@@ -273,10 +276,10 @@ export function EditorHeader({
             </span>
           )}
           {rightElements}
-          <button
+          <HeaderButton
             ref={loginButtonRef}
             onClick={handleUserIconClick}
-            className={`${buttonBaseClass} ${buttonInactiveClass} ml-2`}
+            className={`${BUTTON_INACTIVE(theme)} ml-2`}
             title="User"
           >
             {user && user.photoURL ? (
@@ -284,7 +287,7 @@ export function EditorHeader({
             ) : (
               <FaUser size={11} />
             )}
-          </button>
+          </HeaderButton>
         </div>
       </div>
 
@@ -295,4 +298,4 @@ export function EditorHeader({
       />
     </div>
   );
-}
+});

@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { addMouseWheelZoom } from './shortcuts';
 import { registerLanguageSuggestions } from './languageSuggestions';
+import { defaultEditorOptions } from '@/app/config/editorConfig';
 
 const MonacoEditorBase = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -29,60 +30,7 @@ export function MonacoEditor({
   theme,
   options = {},
   height = "100%",
-  // ...other props...
 }: MonacoEditorProps) {
-  const defaultOptions: Monaco.editor.IStandaloneEditorConstructionOptions = {
-    fontFamily: "Cascadia Mono",
-    fontSize: 14,
-    lineHeight: 24,
-    minimap: { enabled: false },
-    smoothScrolling: true,
-    scrollBeyondLastLine: false,
-    scrollbar: {
-      vertical: "auto",
-      horizontal: "auto",
-      useShadows: false,
-      verticalScrollbarSize: 8,
-      horizontalScrollbarSize: 8,
-      verticalSliderSize: 8,
-      horizontalSliderSize: 8,
-    },
-    lineNumbersMinChars: 3,
-    lineDecorationsWidth: 0,
-    lineNumbers: "on",
-    wordWrap: "on",
-    wrappingIndent: "deepIndent",
-    suggestOnTriggerCharacters: true,
-    quickSuggestions: { other: true, comments: true, strings: true },
-    snippetSuggestions: "inline",
-    acceptSuggestionOnEnter: "on",
-    tabCompletion: "on",
-    wordBasedSuggestions: "allDocuments",
-    parameterHints: {
-      enabled: true,
-    },
-    suggest: {
-      localityBonus: true,
-      snippetsPreventQuickSuggestions: false,
-      showIcons: true,
-      showStatusBar: true,
-      preview: true,
-      showMethods: true,
-      showFunctions: true,
-      showConstructors: true,
-      showDeprecated: false,
-      matchOnWordStartOnly: false,
-      filterGraceful: false,
-      showWords: true,
-      showSnippets: true,
-      showInlineDetails: true,
-      shareSuggestSelections: true,
-      selectionMode: 'never',
-      insertMode: 'insert'
-    },
-    suggestSelection: 'first',
-    suggestLineHeight: 24,
-  };
 
   const handleEditorDidMount = async (
     editor: Monaco.editor.IStandaloneCodeEditor,
@@ -110,7 +58,7 @@ export function MonacoEditor({
       onMount={handleEditorDidMount}
       theme={theme}
       options={{
-        ...defaultOptions,
+        ...defaultEditorOptions,
         ...options,
       }}
     />

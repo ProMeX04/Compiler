@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { EditorHeader } from "@/app/components/EditorHeader";
 import { TestPanel } from "@/app/components/Editor/TestPanel";
@@ -12,6 +12,7 @@ import { useFileManager } from "@/app/hooks/useFileManager";
 import { usePistonRuntimes } from "@/app/hooks/usePistonRuntimes";
 import { saveFileToIDB } from '@/app/utils/idb'; // Add this import
 import { getLanguageExtension } from '@/app/config/languageConfig'; // Add this import
+import { defaultEditorOptions } from '@/app/config/editorConfig';
 
 import {
   MonacoEditor,
@@ -21,6 +22,30 @@ import {
 import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
 import { addDuplicateLineCommand } from "./Editor/shortcuts";
+
+const MemoizedMonacoEditor = React.memo(MonacoEditor);
+const MemoizedTestPanel = React.memo(TestPanel);
+const MemoizedInputOutputPanel = React.memo(InputOutputPanel);
+
+const WelcomeGuide = () => {
+  const { theme } = useTheme();
+  return (
+    <div className={`flex flex-col items-center justify-center h-full text-center p-4 ${
+      theme === "light" ? "bg-white" : "bg-[#1e1e1e]"
+    }`}>
+      <h2 className="text-2xl font-semibold mb-4">Welcome to Code Editor</h2>
+      <div className="space-y-4 max-w-md">
+        <p>To get started:</p>
+        <ul className="space-y-2 text-left list-disc pl-5">
+          <li>Click the <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">+ New File</kbd> button to create a new file</li>
+          <li>Use <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">Ctrl + S</kbd> to save your code</li>
+          <li>Press <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">Ctrl + B</kbd> to run your code</li>
+          <li>Switch between different views using the toolbar buttons</li>
+        </ul>
+      </div>
+    </div>
+  );
+};
 
 export interface CodeEditorProps {
   defaultContent?: string;
@@ -73,7 +98,7 @@ export function CodeEditor({
   });
   const { currentTheme, theme } = useTheme();
   const [editorMode, setEditorMode] = useState<"code" | "test" | "editor">(
-    "code"
+    "editor"
   );
   const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
   const [isExplorerVisible, setIsExplorerVisible] = useState(true);
@@ -93,7 +118,7 @@ export function CodeEditor({
     y: number;
   } | null>(null);
 
-  const compileAndRun = React.useCallback(async () => {
+  const compileAndRun = useCallback(async () => {
     if (!activeFile) return;
 
     const version = getLatestVersion(activeFile.language);
@@ -145,16 +170,16 @@ export function CodeEditor({
     setTestCases,
   ]);
 
-  const handleRunClick = React.useCallback(async () => {
+  const handleRunClick = useCallback(async () => {
     if (editorMode === "editor") {
       setEditorMode("code");
     }
     await compileAndRun();
   }, [editorMode, compileAndRun]);
 
-  const saveActiveFile = () => {
+  const saveActiveFile = useCallback(() => {
     if (!activeFile) return;
-
+  
     const blob = new Blob([activeFile.content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -164,8 +189,8 @@ export function CodeEditor({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
+  }, [activeFile]);
+  
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -174,17 +199,23 @@ export function CodeEditor({
         saveActiveFile();
         return;
       }
-
+  
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
         e.stopPropagation();
         await handleRunClick();
       }
     };
-
+  
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [handleRunClick, saveActiveFile]);
+
+  useEffect(() => {
+    if (activeFile) {
+      setEditorMode("editor");
+    }
+  }, [activeFile]);
 
   const handleContextMenu = (event: React.MouseEvent, id: string) => {
     event.preventDefault();
@@ -218,7 +249,7 @@ export function CodeEditor({
     setTestCases((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleEditorDidMount = (
+  const handleEditorMount = useCallback((
     editor: Monaco.editor.IStandaloneCodeEditor,
     monaco: typeof Monaco
   ) => {
@@ -233,9 +264,11 @@ export function CodeEditor({
     );
 
     addDuplicateLineCommand(editor, monaco);
-  };
+  }, []);
 
-  const handleTabContentChange = async (fileId: string, newContent: string) => {
+  const handleTabContentChange = useCallback(async (fileId: string, newContent: string) => {
+    if (!fileId) return; // Add null check
+    
     const updatedTabs = tabs.map(file => 
       file.id === fileId ? { ...file, content: newContent } : file
     );
@@ -245,7 +278,7 @@ export function CodeEditor({
     if (updatedFile) {
       await saveFileToIDB(updatedFile);
     }
-  };
+  }, [tabs, setTabs]);
 
   const handleRenameFile = async (id: string, newName: string) => {
     const updatedTabs = tabs.map(tab => {
@@ -280,6 +313,29 @@ export function CodeEditor({
   const handleDeleteFile = async (id: string) => {
     await removeTab(id);
   };
+
+  const editorPanel = useMemo(() => (
+    <Panel
+      id="editor-panel"
+      order={2}
+      defaultSize={editorMode === "editor" ? 85 : 60}
+      minSize={20}
+    >
+      {activeFile ? (
+        <MemoizedMonacoEditor
+          language={activeFile.language}
+          value={activeFile.content}
+          path={activeFile.name}
+          onChange={(value) => activeTab && handleTabContentChange(activeTab, value)} // Add null check here
+          onMount={handleEditorMount}
+          theme={currentTheme.name}
+          options={defaultEditorOptions}
+        />
+      ) : (
+        <WelcomeGuide />
+      )}
+    </Panel>
+  ), [activeFile, activeTab, editorMode, currentTheme.name, handleTabContentChange, handleEditorMount]);
 
   return (
     <div
@@ -333,73 +389,20 @@ export function CodeEditor({
               />
             </>
           )}
-          <Panel
-            id="editor-panel"
-            order={2}
-            defaultSize={editorMode === "editor" ? 100 : 80}
-            minSize={20}
-          >
-            <MonacoEditor
-              language={activeFile?.language || "plaintext"}
-              value={activeFile?.content || ""}
-              path={activeFile?.name}
-              onChange={(value) => handleTabContentChange(activeTab, value)}
-              onMount={handleEditorDidMount}
-              theme={currentTheme.name}
-              options={{
-                fontFamily: "Cascadia Mono",
-                fontSize: 14,
-                lineHeight: 24,
-                suggestOnTriggerCharacters: true,
-                quickSuggestions: {
-                  other: true,
-                  comments: true,
-                  strings: true,
-                },
-                snippetSuggestions: "inline",
-                acceptSuggestionOnEnter: "on",
-                tabCompletion: "on",
-                wordBasedSuggestions: "allDocuments",
-                smoothScrolling: true, 
-                scrollBeyondLastLine: false,
-                scrollbar: {
-                  vertical: "auto",
-                  horizontal: "auto",
-                  useShadows: false,
-                  verticalScrollbarSize: 8,
-                  horizontalScrollbarSize: 8,
-                  verticalSliderSize: 8,
-                  horizontalSliderSize: 8,
-                },
-                suggest: {
-                  localityBonus: true,
-                  snippetsPreventQuickSuggestions: false,
-                  showIcons: true,
-                  showStatusBar: true,
-                  preview: true,
-                  showMethods: true,
-                  showFunctions: true,
-                  showConstructors: true,
-                  showDeprecated: false,
-                  matchOnWordStartOnly: false,
-                },
-                minimap: { enabled: false },
-              }}
-            />
-          </Panel>
+          {editorPanel}
           {editorMode !== "editor" && (
             <>
               <ResizeHandle />
-              <Panel id="output-panel" order={3} defaultSize={20} minSize={5}>
+              <Panel id="output-panel" order={3} defaultSize={25} minSize={5}>
                 {editorMode === "test" ? (
-                  <TestPanel
+                  <MemoizedTestPanel
                     testCases={testCases}
                     onTestCaseChange={handleTestCaseChange}
                     onAddTestCase={addTestCase}
                     onRemoveTestCase={removeTestCase}
                   />
                 ) : (
-                  <InputOutputPanel
+                  <MemoizedInputOutputPanel
                     currentTheme={currentTheme}
                     testCase={testCase}
                     output={output}

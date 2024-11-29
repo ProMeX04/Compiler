@@ -7,14 +7,20 @@ import { FaPencilAlt, FaTrash } from "react-icons/fa"; // Add this import
 
 interface FileExplorerProps {
   files: FileTab[];
-  activeTab: string;
+  activeTab: string | null; // Update type to allow null
   onSelectFile: (id: string) => void;
-  onContextMenu: (e: React.MouseEvent, id: string) => void;
+  onContextMenu: (event: React.MouseEvent, id: string) => void;
   onRenameFile: (id: string, newName: string) => void;
-  onDeleteFile: (id: string) => void; // Add this line
+  onDeleteFile: (id: string) => void;
 }
 
-export function FileExplorer({ files, activeTab, onSelectFile, onRenameFile, onDeleteFile }: FileExplorerProps) {
+export function FileExplorer({
+  files,
+  activeTab,
+  onSelectFile,
+  onRenameFile,
+  onDeleteFile,
+}: FileExplorerProps) {
   const { theme } = useTheme();
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [newFileName, setNewFileName] = useState<string>("");
