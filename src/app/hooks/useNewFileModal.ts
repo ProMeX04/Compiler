@@ -21,7 +21,6 @@ export function useNewFileModal({ defaultLanguage, templateCodes, onFileCreated 
   const handleCreateNewFile = () => {
     const newId = String(Date.now());
     const extension = getLanguageExtension(newFileLanguage);
-    // Ưu tiên lấy code từ templateCodes, nếu không có thì lấy từ LANGUAGE_CONFIGS
     const templateCode = templateCodes[newFileLanguage] || 
                        LANGUAGE_CONFIGS[newFileLanguage]?.defaultContent || '';
 

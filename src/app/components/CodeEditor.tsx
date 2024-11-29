@@ -4,20 +4,17 @@ import { Panel, PanelGroup } from "react-resizable-panels";
 import { EditorHeader } from "@/app/components/EditorHeader";
 import { TestPanel } from "@/app/components/Editor/TestPanel";
 import { ContextMenu } from "@/app/components/ContextMenu";
-import { CursorPosition, TestCase, FileTab } from "@/app/types/types";
+import { CursorPosition, TestCase } from "@/app/types/types";
 import "@szhsin/react-menu/dist/index.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { useFileManager } from "@/app/hooks/useFileManager";
-import { useNewFileModal } from "@/app/hooks/useNewFileModal";
 import { usePistonRuntimes } from "@/app/hooks/usePistonRuntimes";
-import { db } from '@/app/firebaseConfig'; // Added import
-import { doc, setDoc, collection, getDocs } from 'firebase/firestore'; // Added Firestore functions
-import { useFirebaseAuth } from '@/app/hooks/useFirebaseAuth'; // Ensure authentication hook is imported
+import { saveFileToIDB } from '@/app/utils/idb'; // Add this import
+import { getLanguageExtension } from '@/app/config/languageConfig'; // Add this import
 
 import {
   MonacoEditor,
-  NewFileModal,
   InputOutputPanel,
   ResizeHandle,
 } from "./Editor";
@@ -46,39 +43,25 @@ export function CodeEditor({
   templateCodes = {},
   onSubmit,
 }: CodeEditorProps) {
-  const { user } = useFirebaseAuth(); // Access the authenticated user
   const {
     tabs,
     setTabs,
     activeTab,
     activeFile,
     setActiveTab,
-    setRenamingTabId, // Now defined
-    updateTabName,
+    setRenamingTabId,
     handleLanguageChange,
     addFile,
+    isSyncing,
+    lastSyncTime,
+    syncWithCloud,
+    pullFromCloud,
+    removeTab, 
   } = useFileManager({
     defaultContent,
     defaultFileName,
     defaultLanguage,
     templateCodes,
-  });
-
-  const {
-    isNewFileModalOpen,
-    newFileName,
-    newFileLanguage,
-    setNewFileName,
-    setNewFileLanguage,
-    handleCreateNewFile,
-    setIsNewFileModalOpen,
-  } = useNewFileModal({
-    defaultLanguage,
-    templateCodes,
-    onFileCreated: (newFile) => {
-      setTabs((prev) => [...prev, newFile]);
-      setActiveTab(newFile.id);
-    },
   });
 
   const { getLatestVersion } = usePistonRuntimes();
@@ -185,7 +168,6 @@ export function CodeEditor({
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
-      // Add Ctrl+S handler
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         e.stopPropagation();
@@ -193,7 +175,6 @@ export function CodeEditor({
         return;
       }
 
-      // Use handleRunClick for Ctrl+B
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
         e.stopPropagation();
@@ -254,41 +235,35 @@ export function CodeEditor({
     addDuplicateLineCommand(editor, monaco);
   };
 
-  useEffect(() => {
-    const fetchUserFiles = async () => {
-      if (user) {
-        const filesCollection = collection(db, 'userCodes', user.uid, 'files');
-        const querySnapshot = await getDocs(filesCollection);
-        const userFiles = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setTabs(userFiles as FileTab[]);
-      }
-    };
-
-    fetchUserFiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const handleSaveFile = async (file: FileTab) => {
-    if (user) {
-      const fileRef = doc(db, 'userCodes', user.uid, 'files', file.id);
-      await setDoc(fileRef, {
-        name: file.name,
-        content: file.content,
-        language: file.language
-      }, { merge: true }); // Changed to setDoc with merge
+  const handleTabContentChange = async (fileId: string, newContent: string) => {
+    const updatedTabs = tabs.map(file => 
+      file.id === fileId ? { ...file, content: newContent } : file
+    );
+    setTabs(updatedTabs);
+    
+    const updatedFile = updatedTabs.find(file => file.id === fileId);
+    if (updatedFile) {
+      await saveFileToIDB(updatedFile);
     }
   };
 
-
-  const handleTabContentChange = (fileId: string, newContent: string) => {
-    setTabs(prevTabs => prevTabs.map(file => file.id === fileId ? { ...file, content: newContent } : file));
-    const updatedFile = tabs.find(file => file.id === fileId);
+  const handleRenameFile = async (id: string, newName: string) => {
+    const updatedTabs = tabs.map(tab => {
+      if (tab.id === id) {
+        const nameWithoutExt = newName.split(".")[0];
+        const extension = getLanguageExtension(tab.language);
+        return { ...tab, name: `${nameWithoutExt}.${extension}` };
+      }
+      return tab;
+    });
+    
+    setTabs(updatedTabs);
+    const updatedFile = updatedTabs.find(tab => tab.id === id);
     if (updatedFile) {
-      handleSaveFile({ ...updatedFile, content: newContent });
+      await saveFileToIDB(updatedFile);
     }
+    
+    setRenamingTabId(null);
   };
 
   const handleSubmit = async () => {
@@ -297,19 +272,13 @@ export function CodeEditor({
     setIsCompiling(true);
     try {
       await onSubmit(activeFile.content, activeFile.language, testCases);
-      if (user) {
-        const docRef = doc(db, 'userCodes', user.uid);
-        await setDoc(docRef, { code: activeFile.content }); // Save code to Firestore
-      }
-    } catch {
     } finally {
       setIsCompiling(false);
     }
   };
 
-  const handleRenameFile = (id: string, newName: string) => {
-    updateTabName(id, newName);
-    setRenamingTabId(null); // Optionally reset renaming state
+  const handleDeleteFile = async (id: string) => {
+    await removeTab(id);
   };
 
   return (
@@ -331,6 +300,11 @@ export function CodeEditor({
           currentLanguage={activeFile?.language || defaultLanguage}
           isExplorerVisible={isExplorerVisible}
           toggleExplorer={() => setIsExplorerVisible(!isExplorerVisible)}
+          pullFromCloud={pullFromCloud}
+          isSyncing={isSyncing}
+          syncWithCloud={syncWithCloud}
+          lastSyncTime={lastSyncTime}
+          rightElements={undefined}
         />
       </div>
       <div className="flex-1 flex overflow-hidden">
@@ -349,6 +323,7 @@ export function CodeEditor({
                   onSelectFile={setActiveTab}
                   onContextMenu={handleContextMenu}
                   onRenameFile={handleRenameFile}
+                  onDeleteFile={handleDeleteFile}
                 />
               </Panel>
               <ResizeHandle
@@ -385,7 +360,7 @@ export function CodeEditor({
                 acceptSuggestionOnEnter: "on",
                 tabCompletion: "on",
                 wordBasedSuggestions: "allDocuments",
-                smoothScrolling: true, // Add smooth scrolling
+                smoothScrolling: true, 
                 scrollBeyondLastLine: false,
                 scrollbar: {
                   vertical: "auto",
@@ -456,18 +431,6 @@ export function CodeEditor({
           </button>
         </ContextMenu>
       )}
-
-      <NewFileModal
-        isOpen={isNewFileModalOpen}
-        theme={theme}
-        currentTheme={currentTheme}
-        fileName={newFileName}
-        language={newFileLanguage}
-        onFileNameChange={setNewFileName}
-        onLanguageChange={setNewFileLanguage}
-        onClose={() => setIsNewFileModalOpen(false)}
-        onCreate={handleCreateNewFile}
-      />
     </div>
   );
 }

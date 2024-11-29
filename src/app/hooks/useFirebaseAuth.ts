@@ -21,9 +21,7 @@ export function useFirebaseAuth() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Google sign in error:", error);
-      throw error;
+    } catch {
     }
   };
 
@@ -31,8 +29,7 @@ export function useFirebaseAuth() {
     setLoading(true);
     try {
       await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch {
     } finally {
       setLoading(false);
     }

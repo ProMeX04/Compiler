@@ -9,6 +9,8 @@ import {
   FaExpand,
   FaBars,
   FaUser,
+  FaUndo,
+  FaCloudUploadAlt, // Add this
 } from "react-icons/fa";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { LANGUAGE_CONFIGS } from "@/app/config/languageConfig";
@@ -29,6 +31,11 @@ interface EditorHeaderProps {
   currentLanguage: string;
   isExplorerVisible: boolean;
   toggleExplorer: () => void;
+  rightElements?: React.ReactNode;
+  pullFromCloud: () => void; // Add this
+  isSyncing: boolean;  // Add this
+  syncWithCloud: () => void; // Add this
+  lastSyncTime: Date | null; // Add this
 }
 
 export function EditorHeader({
@@ -42,6 +49,11 @@ export function EditorHeader({
   onLanguageChange,
   currentLanguage,
   toggleExplorer,
+  rightElements,
+  pullFromCloud,
+  isSyncing,
+  syncWithCloud,
+  lastSyncTime,
 }: EditorHeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useFirebaseAuth();
@@ -66,7 +78,6 @@ export function EditorHeader({
   const handleUserIconClick = () => {
     if (loginButtonRef.current) {
       const rect = loginButtonRef.current.getBoundingClientRect();
-      
       setLoginModalPosition({ 
         top: rect.bottom + 5, // Add small offset from button
         left: Math.max(10, rect.right - 320) // Align right edge with some padding
@@ -91,7 +102,7 @@ export function EditorHeader({
             : "bg-[#1e1e1e] border-[#252526]"
         }`}
       >
-        {/* Left section with buttons */}
+        {/* Left section remains unchanged */}
         <div className="flex-1 flex items-center gap-1">
           <button
             onClick={toggleExplorer}
@@ -132,6 +143,7 @@ export function EditorHeader({
           )}
         </div>
 
+        {/* Center/Mid section */}
         <div className="flex items-center gap-1.5">
           {onSubmit && (
             <button
@@ -210,21 +222,69 @@ export function EditorHeader({
             >
               {theme === "dark" ? <FaSun size={11} /> : <FaMoon size={11} />}
             </button>
+          </div>
+        </div>
 
-            {/* User Icon */}
+        {/* Right section with cloud sync and user */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 border-r dark:border-zinc-700 pr-2">
             <button
-              ref={loginButtonRef}
-              onClick={handleUserIconClick}
-              className={`${buttonBaseClass} ${buttonInactiveClass}`}
-              title="User"
+              onClick={syncWithCloud}
+              disabled={isSyncing}
+              title="Save changes to cloud storage"
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md ${
+                theme === "light" 
+                  ? "text-blue-600 hover:bg-blue-50" 
+                  : "text-blue-400 hover:bg-blue-900/30"
+              } disabled:opacity-50`}
             >
-              {user && user.photoURL ? (
-                <Image src={user.photoURL} alt="User Avatar" width={24} height={24} className="rounded-full" />
+              {isSyncing ? (
+                <FaSpinner className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <FaUser size={11} />
+                <>
+                  <FaCloudUploadAlt className="w-3.5 h-3.5" />
+                  <span className="text-xs">Save</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={pullFromCloud}
+              disabled={isSyncing}
+              title="Revert to last saved version"
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md ${
+                theme === "light" 
+                  ? "text-orange-600 hover:bg-orange-50" 
+                  : "text-orange-400 hover:bg-orange-900/30"
+              } disabled:opacity-50`}
+            >
+              {isSyncing ? (
+                <FaSpinner className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  <FaUndo className="w-3.5 h-3.5" />
+                  <span className="text-xs">Back</span>
+                </>
               )}
             </button>
           </div>
+          {lastSyncTime && (
+            <span className="text-xs text-gray-500">
+              Last sync: {lastSyncTime.toLocaleTimeString()}
+            </span>
+          )}
+          {rightElements}
+          <button
+            ref={loginButtonRef}
+            onClick={handleUserIconClick}
+            className={`${buttonBaseClass} ${buttonInactiveClass} ml-2`}
+            title="User"
+          >
+            {user && user.photoURL ? (
+              <Image src={user.photoURL} alt="User Avatar" width={24} height={24} className="rounded-full" />
+            ) : (
+              <FaUser size={11} />
+            )}
+          </button>
         </div>
       </div>
 

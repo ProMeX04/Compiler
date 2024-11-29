@@ -3,6 +3,7 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import { getLanguageIcon } from "@/app/config/languageConfig";
 import { FileTab } from "@/app/types/types";
 import { ContextMenu } from "@/app/components/ContextMenu";
+import { FaPencilAlt, FaTrash } from "react-icons/fa"; // Add this import
 
 interface FileExplorerProps {
   files: FileTab[];
@@ -10,9 +11,10 @@ interface FileExplorerProps {
   onSelectFile: (id: string) => void;
   onContextMenu: (e: React.MouseEvent, id: string) => void;
   onRenameFile: (id: string, newName: string) => void;
+  onDeleteFile: (id: string) => void; // Add this line
 }
 
-export function FileExplorer({ files, activeTab, onSelectFile, onRenameFile }: FileExplorerProps) {
+export function FileExplorer({ files, activeTab, onSelectFile, onRenameFile, onDeleteFile }: FileExplorerProps) {
   const { theme } = useTheme();
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [newFileName, setNewFileName] = useState<string>("");
@@ -41,7 +43,7 @@ export function FileExplorer({ files, activeTab, onSelectFile, onRenameFile }: F
         File
       </div>
       <div className="py-2">
-        {files.map((file) => (
+        {files.filter(file => file.active).map((file) => (
           <div
             key={file.id}
             className={`flex items-center px-2 py-1 cursor-pointer ${
@@ -92,9 +94,27 @@ export function FileExplorer({ files, activeTab, onSelectFile, onRenameFile }: F
               handleContextMenuClose();
             }}
           >
-            Rename
+            <div className="flex items-center gap-2">
+              <FaPencilAlt size={12} />
+              <span>Rename</span>
+            </div>
           </button>
-          {/* Add more context menu actions here */}
+          <button
+            className={`w-full px-4 py-1.5 text-sm text-left text-red-500 hover:text-red-600 ${
+              theme === "light"
+                ? "hover:bg-gray-100"
+                : "hover:bg-zinc-700"
+            }`}
+            onClick={() => {
+              onDeleteFile(contextMenu.id);
+              handleContextMenuClose();
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <FaTrash size={12} />
+              <span>Delete</span>
+            </div>
+          </button>
         </ContextMenu>
       )}
     </div>

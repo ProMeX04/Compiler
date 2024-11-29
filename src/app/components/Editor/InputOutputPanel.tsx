@@ -8,7 +8,6 @@ interface InputOutputPanelProps {
   output: string;
   onTestCaseChange: (value: string) => void;
   onOutputChange: (value: string) => void;
-  // Add any additional props needed for parameterization
 }
 
 export function InputOutputPanel({

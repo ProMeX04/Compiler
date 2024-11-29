@@ -6,6 +6,7 @@ export interface FileTab {
   name: string;
   content: string;
   language: string;
+  active: boolean; // Add this field
 }
 
 export interface CursorPosition {

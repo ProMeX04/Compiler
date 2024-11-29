@@ -47,7 +47,7 @@ export function MonacoEditor({
       verticalSliderSize: 8,
       horizontalSliderSize: 8,
     },
-    lineNumbersMinChars: 2,
+    lineNumbersMinChars: 3,
     lineDecorationsWidth: 0,
     lineNumbers: "on",
     wordWrap: "on",

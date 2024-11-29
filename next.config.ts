@@ -20,6 +20,15 @@ const nextConfig: NextConfig = {
     };
     return config;
   },
+  module: {
+    rules: [
+      // ...existing rules...
+      {
+        test: /\.worker\.ts$/,
+        use: { loader: 'worker-loader' }
+      }
+    ]
+  }
 };
 
 export default nextConfig;
