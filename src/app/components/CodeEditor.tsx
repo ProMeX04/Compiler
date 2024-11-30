@@ -14,12 +14,11 @@ import { saveFileToIDB } from "@/app/utils/idb";
 import { getLanguageExtension } from "@/app/config/languagesConfig/categories";
 import { defaultEditorOptions } from "@/app/config/editor/monaco";
 import WelcomeGuide from "@/app/components/Editor/WelcomeGuide";
-
+import { PanelResizeHandle } from "react-resizable-panels";
 import { MonacoEditor, InputOutputPanel } from "./Editor";
 import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
 import { addDuplicateLineCommand } from "../config/editor/shortcuts";
-import { PanelResizeHandle } from "react-resizable-panels";
 
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
@@ -299,7 +298,7 @@ export function CodeEditor({
 
   const handleFileSelect = (id: string) => {
     if (id === "") {
-      setActiveFileId(null); 
+      setActiveFileId(null);
     } else {
       setActiveFileId(id);
     }
