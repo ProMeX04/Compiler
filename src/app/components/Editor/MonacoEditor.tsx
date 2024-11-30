@@ -1,8 +1,7 @@
 import dynamic from "next/dynamic";
 import { addMouseWheelZoom } from "../../config/editor/shortcuts";
 import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
-import { defaultEditorOptions } from "@/app/config/editor/monaco";
-import { useMemo, useCallback } from "react";
+import { useCallback } from "react";
 
 const MonacoEditorBase = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -34,14 +33,6 @@ export function MonacoEditor({
   options = {},
   height = "100%",
 }: MonacoEditorProps) {
-  const mergedOptions = useMemo(
-    () => ({
-      ...defaultEditorOptions,
-      ...options,
-    }),
-    [options]
-  );
-
   const handleEditorDidMount = useCallback(
     async (
       editor: Monaco.editor.IStandaloneCodeEditor,
@@ -72,7 +63,7 @@ export function MonacoEditor({
       onChange={(value) => onChange(value || "")}
       onMount={handleEditorDidMount}
       theme={theme}
-      options={mergedOptions}
+      options={options}
     />
   );
 }

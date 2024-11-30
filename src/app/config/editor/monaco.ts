@@ -1,6 +1,6 @@
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 
-export const defaultEditorOptions: Monaco.editor.IStandaloneEditorConstructionOptions =
+export const defaultMainEditorOptions: Monaco.editor.IStandaloneEditorConstructionOptions =
   {
     fontFamily: "Cascadia Mono",
     fontSize: 14,
@@ -55,4 +55,28 @@ export const defaultEditorOptions: Monaco.editor.IStandaloneEditorConstructionOp
       insertMode: "insert",
     },
     suggestLineHeight: 24,
+  };
+
+export const defaultInputOutputEditorOptions: Monaco.editor.IStandaloneEditorConstructionOptions =
+  {
+    fontFamily: "Cascadia Mono",
+    fontSize: 14,
+    lineHeight: 24,
+    renderLineHighlight: "none",
+    hideCursorInOverviewRuler: true,
+    overviewRulerBorder: false,
+    scrollBeyondLastLine: false,
+    wordWrap: "on",
+    minimap: { enabled: false },
+    lineNumbersMinChars: 3,
+    lineDecorationsWidth: 0,
+    scrollbar: {
+      vertical: "auto",
+      horizontal: "auto",
+      useShadows: false,
+      verticalScrollbarSize: 8,
+      horizontalScrollbarSize: 8,
+      verticalSliderSize: 8,
+      horizontalSliderSize: 8,
+    },
   };

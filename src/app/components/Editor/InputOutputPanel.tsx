@@ -1,21 +1,20 @@
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { MonacoEditor } from "./MonacoEditor";
 import { PanelResizeHandle } from "react-resizable-panels";
-
-
+import { defaultInputOutputEditorOptions } from "../../config/editor/monaco";
 interface InputOutputPanelProps {
   currentTheme: { name: string; panelBg: string };
-  testCase: string;
+  input: string;
   output: string;
-  onTestCaseChange: (value: string) => void;
+  onInputChange: (value: string) => void;
   onOutputChange: (value: string) => void;
 }
 
 export function InputOutputPanel({
   currentTheme,
-  testCase,
+  input,
   output,
-  onTestCaseChange,
+  onInputChange,
   onOutputChange,
 }: InputOutputPanelProps) {
   return (
@@ -26,9 +25,10 @@ export function InputOutputPanel({
         >
           <MonacoEditor
             language="plaintext"
-            value={testCase}
-            onChange={onTestCaseChange}
+            value={input}
+            onChange={onInputChange}
             theme={currentTheme.name}
+            options={defaultInputOutputEditorOptions}
           />
         </div>
       </Panel>
@@ -40,6 +40,7 @@ export function InputOutputPanel({
             value={output}
             onChange={onOutputChange}
             theme={currentTheme.name}
+            options={defaultInputOutputEditorOptions}
           />
         </div>
       </Panel>

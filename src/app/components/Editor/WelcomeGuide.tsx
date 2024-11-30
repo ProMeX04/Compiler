@@ -132,7 +132,6 @@ const WelcomeGuide = () => {
           ))}
         </div>
 
-        {/* Shortcuts Toggle Button */}
         <button
           onClick={() => setShowShortcuts(!showShortcuts)}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:opacity-90 transform transition hover:-translate-y-0.5"
@@ -141,7 +140,6 @@ const WelcomeGuide = () => {
           <FaChevronDown className={`transform transition-transform ${showShortcuts ? "rotate-180" : ""}`} />
         </button>
 
-        {/* Shortcuts Section */}
         {showShortcuts && (
           <div className="grid grid-cols-1 gap-8 max-w-6xl animate-fadeIn">
             {shortcuts.map((group, groupIndex) => (

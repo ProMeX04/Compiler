@@ -12,7 +12,7 @@ import { useFileManager } from "@/app/hooks/useFileManager";
 import { usePistonRuntimes } from "@/app/hooks/usePistonRuntimes";
 import { saveFileToIDB } from "@/app/utils/idb";
 import { getLanguageExtension } from "@/app/config/languagesConfig/categories";
-import { defaultEditorOptions } from "@/app/config/editor/monaco";
+import { defaultMainEditorOptions } from "@/app/config/editor/monaco";
 import WelcomeGuide from "@/app/components/Editor/WelcomeGuide";
 import { PanelResizeHandle } from "react-resizable-panels";
 import { MonacoEditor, InputOutputPanel } from "./Editor";
@@ -66,7 +66,7 @@ export function CodeEditor({
   });
 
   const { getLatestVersion } = usePistonRuntimes();
-  const [testCase, setTestCase] = useState("");
+  const [input, setInput] = useState("");    // changed from testCase
   const [output, setOutput] = useState("");
   const [, setCursorPosition] = useState<CursorPosition>({
     line: 1,
@@ -120,7 +120,7 @@ export function CodeEditor({
           activeFile.language,
           version,
           activeFile.content,
-          testCase
+          input     // changed from testCase
         );
         setOutput(result.output);
         setExecutionTime(result.executionTime);
@@ -135,7 +135,7 @@ export function CodeEditor({
   }, [
     activeFile,
     editorMode,
-    testCase,
+    input,    // changed from testCase
     testCases,
     getLatestVersion,
     runTests,
@@ -322,7 +322,7 @@ export function CodeEditor({
             }
             onMount={handleEditorMount}
             theme={currentTheme.name}
-            options={defaultEditorOptions}
+            options={defaultMainEditorOptions}
           />
         ) : (
           <WelcomeGuide />
@@ -405,9 +405,9 @@ export function CodeEditor({
                 ) : (
                   <MemoizedInputOutputPanel
                     currentTheme={currentTheme}
-                    testCase={testCase}
+                    input={input}           // changed from testCase
                     output={output}
-                    onTestCaseChange={setTestCase}
+                    onInputChange={setInput}     // changed from onTestCaseChange
                     onOutputChange={setOutput}
                   />
                 )}
