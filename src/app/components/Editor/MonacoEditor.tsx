@@ -1,8 +1,8 @@
 import dynamic from "next/dynamic";
-import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
-import { addMouseWheelZoom } from './shortcuts';
-import { registerLanguageSuggestions } from './languageSuggestions';
-import { defaultEditorOptions } from '@/app/config/editorConfig';
+import { addMouseWheelZoom } from "../../config/editor/shortcuts";
+import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
+import { defaultEditorOptions } from "@/app/config/editor/monaco";
+import { useMemo, useCallback } from "react";
 
 const MonacoEditorBase = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -13,7 +13,10 @@ interface MonacoEditorProps {
   value: string;
   path?: string;
   onChange: (value: string) => void;
-  onMount?: (editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => void;
+  onMount?: (
+    editor: Monaco.editor.IStandaloneCodeEditor,
+    monaco: typeof Monaco
+  ) => void;
   theme: string;
   options?: Monaco.editor.IStandaloneEditorConstructionOptions;
   height?: string | number;
@@ -31,22 +34,34 @@ export function MonacoEditor({
   options = {},
   height = "100%",
 }: MonacoEditorProps) {
+  const mergedOptions = useMemo(
+    () => ({
+      ...defaultEditorOptions,
+      ...options,
+    }),
+    [options]
+  );
 
-  const handleEditorDidMount = async (
-    editor: Monaco.editor.IStandaloneCodeEditor,
-    monaco: typeof Monaco
-  ) => {
-    if (onMount) {
-      onMount(editor, monaco);
-    }
-    
-    addMouseWheelZoom(editor);
-    
-    if (typeof window !== 'undefined' && !suggestionsRegistered) {
-      registerLanguageSuggestions(monaco);
-      suggestionsRegistered = true;
-    }
-  };
+  const handleEditorDidMount = useCallback(
+    async (
+      editor: Monaco.editor.IStandaloneCodeEditor,
+      monaco: typeof Monaco
+    ) => {
+      if (onMount) {
+        onMount(editor, monaco);
+      }
+
+      addMouseWheelZoom(editor);
+      if (typeof window !== "undefined" && !suggestionsRegistered) {
+        const { registerLanguageSuggestions } = await import(
+          "../../config/languagesConfig/suggesstions"
+        );
+        registerLanguageSuggestions(monaco);
+        suggestionsRegistered = true;
+      }
+    },
+    [onMount]
+  );
 
   return (
     <MonacoEditorBase
@@ -57,10 +72,7 @@ export function MonacoEditor({
       onChange={(value) => onChange(value || "")}
       onMount={handleEditorDidMount}
       theme={theme}
-      options={{
-        ...defaultEditorOptions,
-        ...options,
-      }}
+      options={mergedOptions}
     />
   );
 }

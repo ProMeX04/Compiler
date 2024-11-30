@@ -1,10 +1,23 @@
-import { useState, useEffect } from 'react';
-import { FileTab as FileTabType } from '@/app/types/types';
-import { LANGUAGE_CONFIGS, getLanguageExtension } from '@/app/config/languageConfig';
-import { useFirebaseAuth } from './useFirebaseAuth';
-import { collection, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore'; // Added import
-import { db } from '../firebaseConfig'; // Added import
-import { saveFileToIDB, getAllFilesFromIDB, deleteFileFromIDB } from '@/app/utils/idb';
+import { useState, useEffect } from "react";
+import { FileTab as FileTabType } from "@/app/types/types";
+import {
+  LANGUAGE_CONFIGS,
+  getLanguageExtension,
+} from "@/app/config/languagesConfig/categories";
+import { useFirebaseAuth } from "./useFirebaseAuth";
+import {
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  getDocs,
+} from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import {
+  saveFileToIDB,
+  getAllFilesFromIDB,
+  deleteFileFromIDB,
+} from "@/app/utils/idb";
 
 interface UseFileManagerProps {
   defaultContent?: string;
@@ -13,152 +26,154 @@ interface UseFileManagerProps {
   templateCodes?: { [key: string]: string };
 }
 
-export function useFileManager({
-  templateCodes = {},
-}: UseFileManagerProps) {
+export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
   const { user } = useFirebaseAuth();
-  const [tabs, setTabs] = useState<FileTabType[]>([]);
-  const [activeTab, setActiveTab] = useState<string | null>(null);
-  const [renamingTabId, setRenamingTabId] = useState<string | null>(null); // <--- Added state
+  const [files, setFiles] = useState<FileTabType[]>([]);
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  // Không tự động set activeTab khi load files
   useEffect(() => {
     const loadFiles = async () => {
       const files = await getAllFilesFromIDB();
       if (files.length > 0) {
-        setTabs(files);
-        // Removed auto-setting of activeTab
+        setFiles(files);
       }
     };
     loadFiles();
-  }, []); // Only runs once on mount
+  }, []);
 
-  const updateTabContent = async (id: string, newContent: string) => {
-    const updatedTabs = tabs.map((tab) =>
-      tab.id === id ? { ...tab, content: newContent } : tab
-    );
-    setTabs(updatedTabs);
-    
-    const updatedFile = updatedTabs.find(tab => tab.id === id);
+  const updateAndSaveFile = async (updatedFiles: FileTabType[]) => {
+    setFiles(updatedFiles);
+    const updatedFile = updatedFiles.find((file) => file.id === activeFileId);
     if (updatedFile) {
       await saveFileToIDB(updatedFile);
     }
   };
 
-  const updateTabName = async (id: string, newName: string) => {
-    const updatedTabs = tabs.map((tab) => {
-      if (tab.id === id) {
+  const updateFileContent = async (id: string, newContent: string) => {
+    const updatedFiles = files.map((file) =>
+      file.id === id ? { ...file, content: newContent } : file
+    );
+    await updateAndSaveFile(updatedFiles);
+  };
+
+  const updateFileName = async (id: string, newName: string) => {
+    const updatedFiles = files.map((file) => {
+      if (file.id === id) {
         const nameWithoutExt = newName.split(".")[0];
-        const extension = getLanguageExtension(tab.language);
-        return { ...tab, name: `${nameWithoutExt}.${extension}` };
+        const extension = getLanguageExtension(file.language);
+        return { ...file, name: `${nameWithoutExt}.${extension}` };
       }
-      return tab;
+      return file;
     });
-    
-    setTabs(updatedTabs);
-    const updatedFile = updatedTabs.find(tab => tab.id === id);
-    if (updatedFile) {
-      await saveFileToIDB(updatedFile);
-    }
+
+    await updateAndSaveFile(updatedFiles);
   };
 
-  const removeTab = async (id: string) => {
-    // Thay vì xóa, cập nhật active = false
-    const updatedTabs = tabs.map(tab => 
-      tab.id === id ? { ...tab, active: false } : tab
+  const removeFile = async (id: string) => {
+    const updatedFiles = files.map((file) =>
+      file.id === id ? { ...file, active: false } : file
     );
-    setTabs(updatedTabs);
-    
-    // Cập nhật trong IndexedDB
-    const updatedFile = updatedTabs.find(tab => tab.id === id);
-    if (updatedFile) {
-      await saveFileToIDB(updatedFile);
-    }
-
-    // Chuyển sang tab khác nếu đang active
-    if (activeTab === id) {
-      const nextActiveTab = tabs.find(tab => tab.id !== id && tab.active);
-      setActiveTab(nextActiveTab?.id || "");
+    await updateAndSaveFile(updatedFiles);
+    if (activeFileId === id) {
+      const nextActiveFile = files.find(
+        (file) => file.id !== id && file.active
+      );
+      setActiveFileId(nextActiveFile?.id || "");
     }
   };
 
   const handleLanguageChange = async (newLanguage: string) => {
     if (!LANGUAGE_CONFIGS[newLanguage]) return;
 
-    const updatedTabs = tabs.map((tab) => {
-      if (tab.id === activeTab) {
-        const nameWithoutExt = tab.name.split(".")[0];
+    const updatedFiles = files.map((file) => {
+      if (file.id === activeFileId) {
+        const nameWithoutExt = file.name.split(".")[0];
         const extension = getLanguageExtension(newLanguage);
-        const shouldUseTemplate = !tab.content || tab.content.trim() === "";
-        
+        const shouldUseTemplate = !file.content || file.content.trim() === "";
+
         const templateCode = shouldUseTemplate
-          ? templateCodes[newLanguage] || LANGUAGE_CONFIGS[newLanguage]?.defaultContent || ""
-          : tab.content;
+          ? templateCodes[newLanguage] ||
+            LANGUAGE_CONFIGS[newLanguage]?.defaultContent ||
+            ""
+          : file.content;
 
         return {
-          ...tab,
+          ...file,
           language: newLanguage,
           name: `${nameWithoutExt}.${extension}`,
           content: templateCode,
         };
       }
-      return tab;
+      return file;
     });
-    
-    setTabs(updatedTabs);
-    const updatedFile = updatedTabs.find(tab => tab.id === activeTab);
+
+    setFiles(updatedFiles);
+    const updatedFile = updatedFiles.find((file) => file.id === activeFileId);
     if (updatedFile) {
       await saveFileToIDB(updatedFile);
     }
   };
 
-  // Sửa lại addFile để không tự động set activeTab
   const addFile = async () => {
+    const currentLanguage = activeFileId
+      ? files.find((file) => file.id === activeFileId)?.language
+      : "cpp";
+    const defaultLanguage = currentLanguage || "cpp";
+    const defaultContent =
+      LANGUAGE_CONFIGS[defaultLanguage]?.defaultContent || "";
+    const extension = getLanguageExtension(defaultLanguage);
+
     const newFile = {
       id: String(Date.now()),
-      name: 'New File',
-      content: '',
-      language: 'javascript',
-      active: true // Add active status
+      name: `untitled.${extension}`,
+      content: defaultContent,
+      language: defaultLanguage,
+      active: true,
     };
+
     await saveFileToIDB(newFile);
-    setTabs(prev => [...prev, newFile]);
-    // Người dùng phải click vào file để set activeTab
+    setFiles((prev) => [...prev, newFile]);
   };
 
-  const updateFile = async (fileId: string, updatedData: Partial<FileTabType>) => {
+  const updateFile = async (
+    fileId: string,
+    updatedData: Partial<FileTabType>
+  ) => {
     if (user) {
-      const fileRef = doc(db, 'userCodes', user.uid, 'files', fileId);
-      await setDoc(fileRef, updatedData, { merge: true }); 
-      setTabs(prevTabs => prevTabs.map(file => file.id === fileId ? { ...file, ...updatedData } : file));
+      const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
+      await setDoc(fileRef, updatedData, { merge: true });
+      setFiles((prevFiles) =>
+        prevFiles.map((file) =>
+          file.id === fileId ? { ...file, ...updatedData } : file
+        )
+      );
     }
   };
-
   const deleteFile = async (fileId: string) => {
     if (user) {
-      const fileRef = doc(db, 'userCodes', user.uid, 'files', fileId);
+      const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
       await deleteDoc(fileRef);
-      setTabs(prevTabs => prevTabs.filter(file => file.id !== fileId));
+      setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
     }
   };
-
   const syncWithFirebase = async () => {
     if (!user || isSyncing) return;
-    
+
     setIsSyncing(true);
     try {
-      for (const file of tabs) {
-        const fileRef = doc(db, 'userCodes', user.uid, 'files', file.id);
+      for (const file of files) {
+        const fileRef = doc(db, "userCodes", user.uid, "files", file.id);
         await setDoc(fileRef, {
           name: file.name,
           content: file.content,
-          language: file.language
+          language: file.language,
         });
       }
     } catch (error) {
-      console.error('Error syncing with Firebase:', error);
+      console.error("Error syncing with Firebase:", error);
     } finally {
       setIsSyncing(false);
     }
@@ -166,34 +181,30 @@ export function useFileManager({
 
   const syncWithCloud = async () => {
     if (!user || isSyncing) return;
-    
+
     setIsSyncing(true);
     try {
       const localFiles = await getAllFilesFromIDB();
-      
-      // Xử lý từng file dựa trên trạng thái active
+
       for (const file of localFiles) {
-        const fileRef = doc(db, 'userCodes', user.uid, 'files', file.id);
-        
+        const fileRef = doc(db, "userCodes", user.uid, "files", file.id);
+
         if (file.active) {
-          // Cập nhật nếu file còn active
           await setDoc(fileRef, {
             name: file.name,
             content: file.content,
             language: file.language,
-            active: true
+            active: true,
           });
         } else {
-          // Xóa nếu file không còn active
           await deleteDoc(fileRef);
-          // Xóa khỏi IndexedDB sau khi đã xóa thành công trên Firebase
           await deleteFileFromIDB(file.id);
         }
       }
-      
+
       setLastSyncTime(new Date());
     } catch (error) {
-      console.error('Error syncing with Cloud:', error);
+      console.error("Error syncing with Cloud:", error);
     } finally {
       setIsSyncing(false);
     }
@@ -201,57 +212,54 @@ export function useFileManager({
 
   const pullFromCloud = async () => {
     if (!user || isSyncing) {
-      console.log('Please login to pull from cloud');
+      console.log("Please login to pull from cloud");
       return;
     }
 
     setIsSyncing(true);
     try {
-      const filesCollection = collection(db, 'userCodes', user.uid, 'files');
+      const filesCollection = collection(db, "userCodes", user.uid, "files");
       const querySnapshot = await getDocs(filesCollection);
-      const cloudFiles = querySnapshot.docs.map(doc => ({
+      const cloudFiles = querySnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
 
-      // Clear existing files from IndexedDB
       const existingFiles = await getAllFilesFromIDB();
       for (const file of existingFiles) {
         await deleteFileFromIDB(file.id);
       }
 
-      // Save new files to IndexedDB
       for (const file of cloudFiles) {
         await saveFileToIDB(file as FileTabType);
       }
 
-      // Update UI
-      setTabs(cloudFiles as FileTabType[]);
+      setFiles(cloudFiles as FileTabType[]);
       if (cloudFiles.length > 0) {
-        setActiveTab(cloudFiles[0].id);
+        setActiveFileId(cloudFiles[0].id);
       }
 
       setLastSyncTime(new Date());
     } catch (error) {
-      console.error('Error pulling from Cloud:', error);
+      console.error("Error pulling from Cloud:", error);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const activeFile = tabs.find((tab) => tab.id === activeTab);
+  const activeFile = files.find((file) => file.id === activeFileId);
 
   return {
-    tabs,
-    setTabs,
-    activeTab,
-    setActiveTab,
+    files,
+    setFiles,
+    activeFileId,
+    setActiveFileId,
     activeFile,
-    renamingTabId, // Ensure this is now defined
-    setRenamingTabId, // Ensure this is now defined
-    updateTabContent,
-    updateTabName,
-    removeTab,
+    renamingFileId,
+    setRenamingFileId,
+    updateFileContent,
+    updateFileName,
+    removeFile,
     handleLanguageChange,
     addFile,
     updateFile,

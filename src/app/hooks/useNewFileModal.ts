@@ -1,14 +1,23 @@
-import { useState } from 'react';
-import { getLanguageExtension } from '@/app/config/languageConfig';
-import { LANGUAGE_CONFIGS } from '@/app/config/languageConfig';
+import { useState } from "react";
+import { getLanguageExtension } from "@/app/config/languagesConfig/categories";
+import { LANGUAGE_CONFIGS } from "@/app/config/languagesConfig/categories";
 
 interface UseNewFileModalProps {
   defaultLanguage: string;
   templateCodes: { [key: string]: string };
-  onFileCreated: (file: { id: string; name: string; content: string; language: string }) => void;
+  onFileCreated: (file: {
+    id: string;
+    name: string;
+    content: string;
+    language: string;
+  }) => void;
 }
 
-export function useNewFileModal({ defaultLanguage, templateCodes, onFileCreated }: UseNewFileModalProps) {
+export function useNewFileModal({
+  defaultLanguage,
+  templateCodes,
+  onFileCreated,
+}: UseNewFileModalProps) {
   const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
   const [newFileName, setNewFileName] = useState("main");
   const [newFileLanguage, setNewFileLanguage] = useState(defaultLanguage);
@@ -21,8 +30,10 @@ export function useNewFileModal({ defaultLanguage, templateCodes, onFileCreated 
   const handleCreateNewFile = () => {
     const newId = String(Date.now());
     const extension = getLanguageExtension(newFileLanguage);
-    const templateCode = templateCodes[newFileLanguage] || 
-                       LANGUAGE_CONFIGS[newFileLanguage]?.defaultContent || '';
+    const templateCode =
+      templateCodes[newFileLanguage] ||
+      LANGUAGE_CONFIGS[newFileLanguage]?.defaultContent ||
+      "";
 
     onFileCreated({
       id: newId,

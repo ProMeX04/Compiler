@@ -12,10 +12,8 @@ interface TestPanelProps {
   ) => void;
   onAddTestCase: () => void;
   onRemoveTestCase: (index: number) => void;
-  // Add any additional props needed for parameterization
 }
 
-// Add interface for TestCaseItem props
 interface TestCaseItemProps {
   testCase: TestCase;
   index: number;
@@ -31,7 +29,6 @@ const autoResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
   textarea.style.height = `${scrollHeight}px`;
 };
 
-// Add display name to TestCaseItem
 const TestCaseItem = memo(function TestCaseItem({ 
   testCase, 
   index, 
@@ -65,7 +62,6 @@ const TestCaseItem = memo(function TestCaseItem({
           : "border-zinc-700 bg-zinc-800/50"
       } ${getStatusColors(testCase.passed)} transition-all duration-200`}
     >
-      {/* Test Case Header */}
       <div className="flex items-center justify-between p-2 border-b border-zinc-200 dark:border-zinc-700">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium">Test #{index + 1}</span>
@@ -90,7 +86,6 @@ const TestCaseItem = memo(function TestCaseItem({
         </button>
       </div>
 
-      {/* Test Case Content */}
       <div className="p-2 space-y-2">
         <div>
           <label className="block text-xs mb-1 opacity-70">Input:</label>
@@ -141,7 +136,6 @@ const TestCaseItem = memo(function TestCaseItem({
 
 TestCaseItem.displayName = 'TestCaseItem';
 
-// Add display name to TestPanel
 export const TestPanel = memo(function TestPanel({
   testCases,
   onTestCaseChange,
@@ -151,7 +145,6 @@ export const TestPanel = memo(function TestPanel({
   const { theme } = useTheme();
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="flex justify-between items-center p-3 border-b border-zinc-200 dark:border-zinc-700">
         <h3 className="text-sm font-medium">Test Cases</h3>
         <div className="flex items-center gap-2">
@@ -168,7 +161,6 @@ export const TestPanel = memo(function TestPanel({
         </div>
       </div>
 
-      {/* Test Cases List */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-3">
           {testCases.map((testCase, index) => (

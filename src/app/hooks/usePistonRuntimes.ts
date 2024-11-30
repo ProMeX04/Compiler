@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRuntimes } from "../services/piston";
 import { PistonRuntime, RuntimeVersionMap } from "../types/piston";
-import { LANGUAGE_CONFIGS } from "../config/languageConfig";
+import { LANGUAGE_CONFIGS } from "../config/languagesConfig/categories";
 
 const buildRuntimeVersionMap = (
   runtimes: PistonRuntime[]
@@ -26,7 +26,11 @@ const buildRuntimeVersionMap = (
 };
 
 export function usePistonRuntimes() {
-  const { data: runtimeVersions, isLoading, error } = useQuery({
+  const {
+    data: runtimeVersions,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["piston-runtimes"],
     queryFn: async () => {
       const runtimes = await getRuntimes();

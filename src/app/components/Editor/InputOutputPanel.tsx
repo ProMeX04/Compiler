@@ -1,6 +1,7 @@
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { MonacoEditor } from "./MonacoEditor";
-import { ResizeHandle } from "./ResizeHandle";
+import { PanelResizeHandle } from "react-resizable-panels";
+
 
 interface InputOutputPanelProps {
   currentTheme: { name: string; panelBg: string };
@@ -20,7 +21,9 @@ export function InputOutputPanel({
   return (
     <PanelGroup direction="vertical" className="h-full overflow-auto">
       <Panel defaultSize={40} minSize={5}>
-        <div className={`h-full ${currentTheme.panelBg} border-b border-gray-200 dark:border-zinc-800`}>
+        <div
+          className={`h-full ${currentTheme.panelBg} border-b border-gray-200 dark:border-zinc-800`}
+        >
           <MonacoEditor
             language="plaintext"
             value={testCase}
@@ -29,7 +32,7 @@ export function InputOutputPanel({
           />
         </div>
       </Panel>
-      <ResizeHandle className={`h-[1px] bg-gray-200 dark:bg-zinc-800`} />
+      <PanelResizeHandle className={`h-[1px] bg-gray-200 dark:bg-zinc-800`} />
       <Panel defaultSize={60} minSize={5}>
         <div className={`h-full ${currentTheme.panelBg}`}>
           <MonacoEditor
