@@ -58,6 +58,7 @@ export function CodeEditor({
     syncWithCloud,
     pullFromCloud,
     removeFile,
+    uploadFile, // Make sure this is destructured
   } = useFileManager({
     defaultContent,
     defaultFileName,
@@ -78,6 +79,7 @@ export function CodeEditor({
   );
   const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
   const [isExplorerVisible, setIsExplorerVisible] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const {
     isCompiling,
@@ -247,10 +249,12 @@ export function CodeEditor({
 
   const handleTabContentChange = useCallback(
     async (fileId: string, newContent: string) => {
-      if (!fileId) return; // Add null check
+      if (!fileId) return;
 
       const updatedFiles = files.map((file) =>
-        file.id === fileId ? { ...file, content: newContent } : file
+        file.id === fileId
+          ? { ...file, content: newContent, isSynced: false }
+          : file
       );
       setFiles(updatedFiles);
 
@@ -314,6 +318,7 @@ export function CodeEditor({
       >
         {activeFile ? (
           <MemoizedMonacoEditor
+            key={activeFile.id}
             language={activeFile.language}
             value={activeFile.content}
             path={activeFile.name}
@@ -381,6 +386,9 @@ export function CodeEditor({
                   isSyncing={isSyncing}
                   syncWithCloud={syncWithCloud}
                   pullFromCloud={pullFromCloud}
+                  onUploadFile={uploadFile} // Ensure this prop is correctly passed
+                  searchTerm={searchTerm}
+                  onSearch={setSearchTerm}
                 />
               </Panel>
               <PanelResizeHandle

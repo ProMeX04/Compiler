@@ -45,16 +45,15 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
   }, []);
 
   const updateAndSaveFile = async (updatedFiles: FileTabType[]) => {
-    setFiles(updatedFiles);
+    setFiles(updatedFiles as typeof files); // Add type casting if needed
     const updatedFile = updatedFiles.find((file) => file.id === activeFileId);
     if (updatedFile) {
       await saveFileToIDB(updatedFile);
     }
   };
-
   const updateFileContent = async (id: string, newContent: string) => {
     const updatedFiles = files.map((file) =>
-      file.id === id ? { ...file, content: newContent } : file
+      file.id === id ? { ...file, content: newContent, isSynced: false } : file
     );
     await updateAndSaveFile(updatedFiles);
   };
@@ -64,7 +63,11 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       if (file.id === id) {
         const nameWithoutExt = newName.split(".")[0];
         const extension = getLanguageExtension(file.language);
-        return { ...file, name: `${nameWithoutExt}.${extension}` };
+        return {
+          ...file,
+          name: `${nameWithoutExt}.${extension}`,
+          isSynced: false,
+        };
       }
       return file;
     });
@@ -132,6 +135,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       content: defaultContent,
       language: defaultLanguage,
       active: true,
+      isSynced: false,
     };
 
     await saveFileToIDB(newFile);
@@ -180,27 +184,27 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
   };
 
   const syncWithCloud = async () => {
-    if (!user || isSyncing) return;
+    if (!user || isSyncing || !activeFileId) return; // Thêm check activeFileId
 
     setIsSyncing(true);
     try {
-      const localFiles = await getAllFilesFromIDB();
+      const activeFile = files.find(file => file.id === activeFileId);
+      if (!activeFile) return;
 
-      for (const file of localFiles) {
-        const fileRef = doc(db, "userCodes", user.uid, "files", file.id);
+      const fileRef = doc(db, "userCodes", user.uid, "files", activeFile.id);
+      await setDoc(fileRef, {
+        name: activeFile.name,
+        content: activeFile.content,
+        language: activeFile.language,
+        active: true,
+      });
 
-        if (file.active) {
-          await setDoc(fileRef, {
-            name: file.name,
-            content: file.content,
-            language: file.language,
-            active: true,
-          });
-        } else {
-          await deleteDoc(fileRef);
-          await deleteFileFromIDB(file.id);
-        }
-      }
+      // Cập nhật trạng thái isSynced chỉ cho file hiện tại
+      const updatedFiles = files.map((f) =>
+        f.id === activeFileId ? { ...f, isSynced: true } : f
+      );
+      setFiles(updatedFiles);
+      await saveFileToIDB({ ...activeFile, isSynced: true });
 
       setLastSyncTime(new Date());
     } catch (error) {
@@ -223,6 +227,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       const cloudFiles = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        isSynced: true,
       }));
 
       const existingFiles = await getAllFilesFromIDB();
@@ -247,6 +252,39 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     }
   };
 
+  const uploadFile = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target?.result as string;
+      const extension = file.name.split(".").pop() || "txt";
+      const language = getLanguageFromExtension(extension);
+      const newFile: FileTabType = {
+        id: String(Date.now()),
+        name: file.name,
+        content,
+        language,
+        active: true,
+        isSynced: false,
+      };
+      await saveFileToIDB(newFile);
+      setFiles((prev) => [...prev, newFile]);
+      setActiveFileId(newFile.id);
+    };
+    reader.readAsText(file);
+  };
+
+  const getLanguageFromExtension = (extension: string): string => {
+    const mapping: { [key: string]: string } = {
+      js: "javascript",
+      ts: "typescript",
+      py: "python",
+      cpp: "cpp",
+      java: "java",
+      cs: "csharp",
+    };
+    return mapping[extension.toLowerCase()] || "plaintext";
+  };
+
   const activeFile = files.find((file) => file.id === activeFileId);
 
   return {
@@ -269,5 +307,6 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     lastSyncTime,
     syncWithCloud,
     pullFromCloud,
+    uploadFile,
   };
 }

@@ -7,6 +7,7 @@ export interface FileTab {
   content: string;
   language: string;
   active: boolean;
+  isSynced: boolean;
 }
 
 export interface CursorPosition {
@@ -26,4 +27,20 @@ export interface TestCase {
   expectedOutput: string;
   actualOutput?: string;
   passed?: boolean;
+}
+
+export interface FileExplorerProps {
+  files: FileTab[];
+  activeFile: string | null;
+  onSelectFile: (id: string) => void;
+  onContextMenu: (event: React.MouseEvent, id: string) => void;
+  onRenameFile: (id: string, newName: string) => void;
+  onDeleteFile: (id: string) => void;
+  onAddFile: () => void;
+  isSyncing: boolean;
+  syncWithCloud: () => void;
+  pullFromCloud: () => void;
+  onUploadFile: (file: File) => void;
+  searchTerm?: string;
+  onSearch: (term: string) => void;
 }

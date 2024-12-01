@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { getLanguageIcon } from "@/app/config/languagesConfig/categories";
-import { FileTab } from "@/app/types/types";
+import { FileTab, FileExplorerProps } from "@/app/types/types";
 import { ContextMenu } from "@/app/components/ContextMenu";
 import {
   FaPencilAlt,
@@ -10,20 +10,10 @@ import {
   FaCloudUploadAlt,
   FaUndo,
   FaSpinner,
+  FaUpload,
+  FaSearch,
 } from "react-icons/fa";
-
-interface FileExplorerProps {
-  files: FileTab[];
-  activeFile: string | null;
-  onSelectFile: (id: string) => void;
-  onContextMenu: (event: React.MouseEvent, id: string) => void;
-  onRenameFile: (id: string, newName: string) => void;
-  onDeleteFile: (id: string) => void;
-  onAddFile: () => void;
-  isSyncing: boolean;
-  syncWithCloud: () => void;
-  pullFromCloud: () => void;
-}
+import Fuse from 'fuse.js';
 
 export const FileExplorer = React.memo(function FileExplorer({
   files,
@@ -35,6 +25,9 @@ export const FileExplorer = React.memo(function FileExplorer({
   isSyncing,
   syncWithCloud,
   pullFromCloud,
+  onUploadFile, // Ensure this prop is received
+  searchTerm = "",
+  onSearch,
 }: FileExplorerProps) {
   const { theme } = useTheme();
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
@@ -44,6 +37,7 @@ export const FileExplorer = React.memo(function FileExplorer({
     y: number;
     id: string;
   } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleRenameComplete = () => {
     if (renamingFileId) {
@@ -60,6 +54,33 @@ export const FileExplorer = React.memo(function FileExplorer({
 
   const handleContextMenuClose = () => {
     setContextMenu(null);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onUploadFile) { // Add null check
+      onUploadFile(file);
+    }
+  };
+
+  // Cấu hình Fuse.js
+  const fuseOptions = {
+    keys: ['name'],
+    threshold: 0.4, // 0.0 = exact match, 1.0 = match anything
+    includeScore: true,
+    minMatchCharLength: 1
+  };
+
+  const getFilteredFiles = (files: FileTab[], searchTerm: string) => {
+    if (!searchTerm) return files.filter(file => file.active);
+
+    const fuse = new Fuse(files.filter(file => file.active), fuseOptions);
+    const results = fuse.search(searchTerm);
+    return results.map(result => result.item);
   };
 
   return (
@@ -79,114 +100,173 @@ export const FileExplorer = React.memo(function FileExplorer({
               : "bg-[#252526] text-gray-200 border-[#333] hover:bg-[#2a2a2a]"
           }`}
       >
-        <div className="flex items-center gap-2">
-          <span
-            className="ml-2 cursor-pointer"
-            onClick={() => onSelectFile("")}
-          >
+        <div className="flex items-center justify-between w-full">
+          <span className="ml-2 cursor-pointer" onClick={() => onSelectFile("")}>
             Files
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={syncWithCloud}
-              disabled={isSyncing}
-              className={`p-1.5 rounded-md transition-colors
-                ${
-                  theme === "light"
-                    ? "text-blue-500 hover:bg-blue-50"
-                    : "text-blue-400 hover:bg-blue-900/20"
-                } disabled:opacity-50`}
-              title="Save to Cloud"
-            >
-              {isSyncing ? (
-                <FaSpinner className="w-3 h-3 animate-spin" />
-              ) : (
-                <FaCloudUploadAlt className="w-3 h-3" />
-              )}
-            </button>
-            <button
-              onClick={pullFromCloud}
-              disabled={isSyncing}
-              className={`p-1.5 rounded-md transition-colors
-                ${
-                  theme === "light"
-                    ? "text-amber-500 hover:bg-amber-50"
-                    : "text-amber-400 hover:bg-amber-900/20"
-                } disabled:opacity-50`}
-              title="Restore from Cloud"
-            >
-              <FaUndo className="w-3 h-3" />
-            </button>
+          
+          <div className="flex items-center">
+            {/* Cloud sync group */}
+            <div className="flex items-center gap-1 mr-3 border-r pr-3 border-gray-200 dark:border-gray-700">
+              <button
+                onClick={syncWithCloud}
+                disabled={isSyncing}
+                className={`p-1.5 rounded-md transition-colors
+                  ${
+                    theme === "light"
+                      ? "text-blue-500 hover:bg-blue-50"
+                      : "text-blue-400 hover:bg-blue-900/20"
+                  } disabled:opacity-50`}
+                title="Save to Cloud"
+              >
+                {isSyncing ? (
+                  <FaSpinner className="w-3 h-3 animate-spin" />
+                ) : (
+                  <FaCloudUploadAlt className="w-3 h-3" />
+                )}
+              </button>
+              <button
+                onClick={pullFromCloud}
+                disabled={isSyncing}
+                className={`p-1.5 rounded-md transition-colors
+                  ${
+                    theme === "light"
+                      ? "text-amber-500 hover:bg-amber-50"
+                      : "text-amber-400 hover:bg-amber-900/20"
+                  } disabled:opacity-50`}
+                title="Restore from Cloud"
+              >
+                <FaUndo className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* File management group */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleUploadClick}
+                className={`p-1.5 rounded-md transition-colors
+                  ${
+                    theme === "light"
+                      ? "hover:bg-gray-200 text-gray-600"
+                      : "hover:bg-zinc-700 text-gray-400"
+                  }`}
+                title="Upload File"
+              >
+                <FaUpload className="w-3 h-3" />
+              </button>
+              <button
+                onClick={onAddFile}
+                className={`p-1.5 rounded-md transition-colors
+                  ${
+                    theme === "light"
+                      ? "hover:bg-gray-200 text-gray-600"
+                      : "hover:bg-zinc-700 text-gray-400"
+                  }`}
+                title="New File"
+              >
+                <FaPlus className="w-3 h-3" />
+              </button>
+              <input
+                type="file"
+                accept=".js,.ts,.py,.cpp,.java,.cs"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={handleFileChange}
+              />
+            </div>
           </div>
         </div>
-        <button
-          onClick={onAddFile}
-          className={`p-1.5 rounded-md transition-colors
-            ${
-              theme === "light"
-                ? "hover:bg-gray-200 text-gray-600"
-                : "hover:bg-zinc-700 text-gray-400"
-            }`}
-          title="New File"
-        >
-          <FaPlus className="w-3 h-3" />
-        </button>
+      </div>
+
+      {/* Add search bar */}
+      <div className={`px-3 py-2 border-b ${
+        theme === "light" 
+          ? "border-gray-100" 
+          : "border-zinc-800"
+      }`}>
+        <div className="relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder="Search files..."
+            className={`w-full pl-8 pr-3 py-1.5 text-sm rounded-md outline-none transition-colors
+              ${theme === "light"
+                ? "bg-gray-50 focus:bg-white border border-gray-200 focus:border-blue-400"
+                : "bg-zinc-800 focus:bg-zinc-900 border border-zinc-700 focus:border-blue-500"
+              }
+            `}
+          />
+          <FaSearch className={`absolute left-2.5 top-2.5 w-3 h-3 
+            ${theme === "light" ? "text-gray-400" : "text-gray-500"}`} 
+          />
+        </div>
       </div>
 
       <div className="py-2">
-        {files
-          .filter((file) => file.active)
-          .map((file) => (
-            <div
-              key={file.id}
-              className={`flex items-center px-3 py-2 cursor-pointer transition-all duration-200
+        {getFilteredFiles(files, searchTerm).map((file) => (
+          <div
+            key={file.id}
+            className={`flex items-center px-3 py-2 cursor-pointer transition-all duration-200
+            ${
+              activeFile === file.id
+                ? theme === "light"
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-500"
+                  : "bg-[#37373d] text-blue-300 border-l-4 border-blue-400"
+                : theme === "light"
+                ? "hover:bg-gray-50 text-gray-700 border-l-4 border-transparent"
+                : "hover:bg-[#2a2d2e] text-gray-300 border-l-4 border-transparent"
+            }`}
+            onClick={() => onSelectFile(file.id)}
+            onContextMenu={(e) => handleContextMenuOpen(e, file.id)}
+          >
+            <span className="mr-3 opacity-80">
+              {file.language && getLanguageIcon(file.language)}
+            </span>
+            {renamingFileId === file.id ? (
+              <input
+                type="text"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                onBlur={handleRenameComplete}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRenameComplete();
+                }}
+                className={`bg-transparent w-full px-2 py-1 rounded outline-none text-inherit
+                ${
+                  theme === "light"
+                    ? "focus:bg-white focus:ring-2 focus:ring-blue-200"
+                    : "focus:bg-[#1e1e1e] focus:ring-2 focus:ring-blue-500"
+                }`}
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span
+                className={`text-sm font-medium flex-1 transition-colors hover:text-opacity-100
               ${
                 activeFile === file.id
-                  ? theme === "light"
-                    ? "bg-blue-50 text-blue-600 border-l-4 border-blue-500"
-                    : "bg-[#37373d] text-blue-300 border-l-4 border-blue-400"
-                  : theme === "light"
-                  ? "hover:bg-gray-50 text-gray-700 border-l-4 border-transparent"
-                  : "hover:bg-[#2a2d2e] text-gray-300 border-l-4 border-transparent"
+                  ? "text-opacity-100"
+                  : "text-opacity-80"
               }`}
-              onClick={() => onSelectFile(file.id)}
-              onContextMenu={(e) => handleContextMenuOpen(e, file.id)}
-            >
-              <span className="mr-3 opacity-80">
-                {file.language && getLanguageIcon(file.language)}
+              >
+                {file.name}
               </span>
-              {renamingFileId === file.id ? (
-                <input
-                  type="text"
-                  value={newFileName}
-                  onChange={(e) => setNewFileName(e.target.value)}
-                  onBlur={handleRenameComplete}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleRenameComplete();
-                  }}
-                  className={`bg-transparent w-full px-2 py-1 rounded outline-none text-inherit
-                  ${
-                    theme === "light"
-                      ? "focus:bg-white focus:ring-2 focus:ring-blue-200"
-                      : "focus:bg-[#1e1e1e] focus:ring-2 focus:ring-blue-500"
-                  }`}
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span
-                  className={`text-sm font-medium transition-colors hover:text-opacity-100
-                ${
-                  activeFile === file.id
-                    ? "text-opacity-100"
-                    : "text-opacity-80"
+            )}
+            {/* Thay đổi màu của trạng thái sync */}
+            {!file.isSynced && (
+              <span
+                className={`text-xs ml-2 ${
+                  theme === "light" 
+                    ? "text-amber-500" 
+                    : "text-amber-400"
                 }`}
-                >
-                  {file.name}
-                </span>
-              )}
-            </div>
-          ))}
+              >
+                Unsynced
+              </span>
+            )}
+          </div>
+        ))}
       </div>
 
       {contextMenu && (
