@@ -40,6 +40,36 @@ export const cppSuggestions = [
     insertText: "cout << ${1:/* message */} << endl;",
     documentation: "Print to console",
   },
+  {
+    label: "competitive",
+    kind: CompletionItemKind.Snippet,
+    insertText: "#include <bits/stdc++.h>\nusing namespace std;\n#define ll long long\n#define pb push_back\n#define all(x) (x).begin(),(x).end()\nconst int MOD = 1e9+7;\n\nint main() {\n    ios::sync_with_stdio(0);\n    cin.tie(0);\n    ${0}\n    return 0;\n}",
+    documentation: "Competitive programming template",
+  },
+  {
+    label: "vector",
+    kind: CompletionItemKind.Snippet,
+    insertText: "vector<${1:int}> ${2:v};",
+    documentation: "Vector declaration",
+  },
+  {
+    label: "sort",
+    kind: CompletionItemKind.Snippet,
+    insertText: "sort(${1:v}.begin(), ${1:v}.end());",
+    documentation: "Sort container",
+  },
+  {
+    label: "binary_search",
+    kind: CompletionItemKind.Snippet,
+    insertText: "binary_search(${1:v}.begin(), ${1:v}.end(), ${2:key});",
+    documentation: "Binary search",
+  },
+  {
+    label: "gcd",
+    kind: CompletionItemKind.Snippet,
+    insertText: "__gcd(${1:a}, ${2:b})",
+    documentation: "Greatest Common Divisor",
+  },
 ];
 
 export const cppKeywords = [
@@ -51,5 +81,19 @@ export const cppKeywords = [
   'explicit', 'false', 'friend', 'mutable', 'namespace', 'new', 'operator',
   'private', 'protected', 'public', 'reinterpret_cast', 'static_cast',
   'template', 'this', 'throw', 'true', 'try', 'typeid', 'typename', 'using',
-  'virtual', 'wchar_t'
+  'virtual', 'wchar_t',
+  // STL Containers
+  'vector', 'stack', 'queue', 'deque', 'priority_queue', 'set', 'multiset',
+  'map', 'multimap', 'unordered_set', 'unordered_map', 'pair', 'tuple',
+  // STL Algorithms
+  'sort', 'stable_sort', 'reverse', 'unique', 'next_permutation',
+  'prev_permutation', 'lower_bound', 'upper_bound', 'binary_search',
+  'max_element', 'min_element', 'accumulate', 'count', 'find',
+  // Math
+  'pow', 'sqrt', 'abs', 'ceil', 'floor', 'round', 'log', 'log2', 'log10',
+  'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+  // Input/Output
+  'cin', 'cout', 'endl', 'setprecision', 'fixed', 'scientific',
+  // Competitive Programming Terms
+  'MOD', 'INF', 'MAXN', 'pb', 'll', 'vi', 'vll', 'pii', 'mp'
 ];

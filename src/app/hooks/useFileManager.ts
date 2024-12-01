@@ -6,17 +6,18 @@ import {
 } from "@/app/config/languagesConfig/categories";
 import { useFirebaseAuth } from "./useFirebaseAuth";
 import {
-  collection,
   doc,
   setDoc,
   deleteDoc,
+  getDoc,
+  collection,
   getDocs,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import {
   saveFileToIDB,
   getAllFilesFromIDB,
-  deleteFileFromIDB,
+  deleteFileFromIDB
 } from "@/app/utils/idb";
 
 interface UseFileManagerProps {
@@ -108,6 +109,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
           language: newLanguage,
           name: `${nameWithoutExt}.${extension}`,
           content: templateCode,
+          isSynced: false, // Add this
         };
       }
       return file;
@@ -148,10 +150,10 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
   ) => {
     if (user) {
       const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
-      await setDoc(fileRef, updatedData, { merge: true });
+      await setDoc(fileRef, { ...updatedData, isSynced: false }, { merge: true }); // Add isSynced
       setFiles((prevFiles) =>
         prevFiles.map((file) =>
-          file.id === fileId ? { ...file, ...updatedData } : file
+          file.id === fileId ? { ...file, ...updatedData, isSynced: false } : file // Add isSynced
         )
       );
     }
@@ -178,6 +180,64 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       }
     } catch (error) {
       console.error("Error syncing with Firebase:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const syncFileWithCloud = async (fileId: string) => {
+    if (!user || isSyncing) return;
+
+    setIsSyncing(true);
+    try {
+      const fileToSync = files.find(file => file.id === fileId);
+      if (!fileToSync) return;
+
+      const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
+      await setDoc(fileRef, {
+        name: fileToSync.name,
+        content: fileToSync.content,
+        language: fileToSync.language,
+        active: true,
+      });
+
+      const updatedFiles = files.map((f) =>
+        f.id === fileId ? { ...f, isSynced: true } : f
+      );
+      setFiles(updatedFiles);
+      await saveFileToIDB({ ...fileToSync, isSynced: true });
+
+      setLastSyncTime(new Date());
+    } catch (error) {
+      console.error("Error syncing file with Cloud:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const pullFileFromCloud = async (fileId: string) => {
+    if (!user || isSyncing) {
+      console.log("Please login to pull from cloud");
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
+      const fileDoc = await getDoc(fileRef);
+      if (fileDoc.exists()) {
+        const cloudFile = { id: fileDoc.id, ...fileDoc.data(), isSynced: true };
+        await saveFileToIDB(cloudFile as FileTabType);
+        setFiles((prevFiles) =>
+          prevFiles.map((file) =>
+            file.id === fileId ? { ...file, ...cloudFile } : file
+          )
+        );
+      } else {
+        console.log("No such file in cloud");
+      }
+    } catch (error) {
+      console.error("Error pulling file from Cloud:", error);
     } finally {
       setIsSyncing(false);
     }
@@ -215,6 +275,82 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
   };
 
   const pullFromCloud = async () => {
+    if (!user || isSyncing || !activeFileId) {
+      console.log("Please login to pull from cloud");
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const fileRef = doc(db, "userCodes", user.uid, "files", activeFileId);
+      const fileDoc = await getDoc(fileRef);
+      if (fileDoc.exists()) {
+        const cloudFile = { id: fileDoc.id, ...fileDoc.data(), isSynced: true };
+        await saveFileToIDB(cloudFile as FileTabType);
+        setFiles((prevFiles) =>
+          prevFiles.map((file) =>
+            file.id === activeFileId ? { ...file, ...cloudFile } : file
+          )
+        );
+        setLastSyncTime(new Date());
+      } else {
+        console.log("No such file in cloud");
+      }
+    } catch (error) {
+      console.error("Error pulling from Cloud:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const saveAllFiles = async () => {
+    if (!user || isSyncing) return;
+
+    setIsSyncing(true);
+    try {
+      const activeFiles = files.filter(file => file.active);
+      const inactiveFiles = files.filter(file => !file.active);
+
+      // Delete inactive files from Cloud
+      for (const file of inactiveFiles) {
+        const fileRef = doc(db, "userCodes", user.uid, "files", file.id);
+        await deleteDoc(fileRef);
+        // Delete from IndexedDB
+        await deleteFileFromIDB(file.id); // You'll need to create this function in your IDB utils
+      }
+
+      // Save active files to Cloud
+      for (const file of activeFiles) {
+        const fileRef = doc(db, "userCodes", user.uid, "files", file.id);
+        await setDoc(fileRef, {
+          name: file.name,
+          content: file.content,
+          language: file.language,
+          active: true,
+        });
+      }
+
+      // Update files state to remove inactive files
+      const updatedFiles = activeFiles.map(file => ({
+        ...file,
+        isSynced: true
+      }));
+      setFiles(updatedFiles);
+      
+      // Save active files to IndexedDB
+      for (const file of updatedFiles) {
+        await saveFileToIDB(file);
+      }
+
+      setLastSyncTime(new Date());
+    } catch (error) {
+      console.error("Error saving all files to Cloud:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const pullAllFromCloud = async () => {
     if (!user || isSyncing) {
       console.log("Please login to pull from cloud");
       return;
@@ -227,13 +363,8 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       const cloudFiles = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        isSynced: true,
+        isSynced: true, 
       }));
-
-      const existingFiles = await getAllFilesFromIDB();
-      for (const file of existingFiles) {
-        await deleteFileFromIDB(file.id);
-      }
 
       for (const file of cloudFiles) {
         await saveFileToIDB(file as FileTabType);
@@ -246,7 +377,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
 
       setLastSyncTime(new Date());
     } catch (error) {
-      console.error("Error pulling from Cloud:", error);
+      console.error("Error pulling all files from Cloud:", error);
     } finally {
       setIsSyncing(false);
     }
@@ -285,6 +416,29 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     return mapping[extension.toLowerCase()] || "plaintext";
   };
 
+  const handleRenameFile = async (id: string, newName: string) => {
+    const updatedFiles = files.map((file) => {
+      if (file.id === id) {
+        const nameWithoutExt = newName.split(".")[0];
+        const extension = getLanguageExtension(file.language);
+        return { 
+          ...file, 
+          name: `${nameWithoutExt}.${extension}`,
+          isSynced: false
+        };
+      }
+      return file;
+    });
+
+    setFiles(updatedFiles);
+    const updatedFile = updatedFiles.find((file) => file.id === id);
+    if (updatedFile) {
+      await saveFileToIDB(updatedFile);
+    }
+
+    setRenamingFileId(null);
+  };
+
   const activeFile = files.find((file) => file.id === activeFileId);
 
   return {
@@ -308,5 +462,10 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     syncWithCloud,
     pullFromCloud,
     uploadFile,
+    saveAllFiles,
+    pullAllFromCloud,
+    syncFileWithCloud,
+    pullFileFromCloud,
+    handleRenameFile,
   };
 }

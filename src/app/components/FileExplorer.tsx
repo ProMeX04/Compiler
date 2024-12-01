@@ -1,19 +1,41 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { getLanguageIcon } from "@/app/config/languagesConfig/categories";
-import { FileTab, FileExplorerProps } from "@/app/types/types";
+import { FileTab } from "@/app/types/types";
 import { ContextMenu } from "@/app/components/ContextMenu";
 import {
   FaPencilAlt,
   FaTrash,
   FaPlus,
-  FaCloudUploadAlt,
-  FaUndo,
-  FaSpinner,
   FaUpload,
   FaSearch,
+  FaDownload,
 } from "react-icons/fa";
+import { 
+  MdOutlineCloudSync,
+  MdCloudDownload,
+  MdOutlineCloudDone,
+  MdHistory 
+} from "react-icons/md";
 import Fuse from 'fuse.js';
+
+export interface FileExplorerProps {
+  files: FileTab[];
+  activeFile: string | null;
+  onSelectFile: (id: string) => void;
+  onRenameFile: (id: string, newName: string) => void;
+  onDeleteFile: (id: string) => void;
+  onAddFile: () => void;
+  isSyncing: boolean;
+  onUploadFile: (file: File) => void;
+  searchTerm?: string;
+  onSearch: (term: string) => void;
+  saveAllFiles: () => void;
+  pullAllFromCloud: () => void;
+  updateFile: (id: string, data: Partial<FileTab>) => void;
+  syncFileWithCloud: (id: string) => void;
+  pullFileFromCloud: (id: string) => void;
+}
 
 export const FileExplorer = React.memo(function FileExplorer({
   files,
@@ -23,11 +45,13 @@ export const FileExplorer = React.memo(function FileExplorer({
   onDeleteFile,
   onAddFile,
   isSyncing,
-  syncWithCloud,
-  pullFromCloud,
-  onUploadFile, // Ensure this prop is received
+  onUploadFile,
   searchTerm = "",
   onSearch,
+  saveAllFiles,
+  pullAllFromCloud,
+  syncFileWithCloud,
+  pullFileFromCloud,  
 }: FileExplorerProps) {
   const { theme } = useTheme();
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
@@ -49,6 +73,7 @@ export const FileExplorer = React.memo(function FileExplorer({
 
   const handleContextMenuOpen = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
+    e.stopPropagation(); 
     setContextMenu({ x: e.clientX, y: e.clientY, id });
   };
 
@@ -62,15 +87,40 @@ export const FileExplorer = React.memo(function FileExplorer({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && onUploadFile) { // Add null check
+    if (file && onUploadFile) { 
       onUploadFile(file);
     }
   };
 
-  // Cấu hình Fuse.js
+  const handleDownloadFile = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const file = files.find(f => f.id === id);
+    if (!file) return;
+
+    const blob = new Blob([file.content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    handleContextMenuClose();
+  }, [files]);
+
+  useEffect(() => {
+    const handleWindowClick = () => {
+      setContextMenu(null);
+    };
+
+    window.addEventListener('click', handleWindowClick);
+    return () => window.removeEventListener('click', handleWindowClick);
+  }, []);
+
   const fuseOptions = {
     keys: ['name'],
-    threshold: 0.4, // 0.0 = exact match, 1.0 = match anything
+    threshold: 0.4, 
     includeScore: true,
     minMatchCharLength: 1
   };
@@ -81,6 +131,21 @@ export const FileExplorer = React.memo(function FileExplorer({
     const fuse = new Fuse(files.filter(file => file.active), fuseOptions);
     const results = fuse.search(searchTerm);
     return results.map(result => result.item);
+  };
+
+  // Update setRenamingFileId to also set initial name
+  const startRenaming = (fileId: string) => {
+    const file = files.find(f => f.id === fileId);
+    if (file) {
+      setRenamingFileId(fileId);
+      setNewFileName(file.name); // Set the current name instead of empty string
+    }
+  };
+
+  // Update the places where we start renaming
+  const handleRenameTab = (id: string) => {
+    startRenaming(id);
+    handleContextMenuClose();
   };
 
   return (
@@ -106,10 +171,22 @@ export const FileExplorer = React.memo(function FileExplorer({
           </span>
           
           <div className="flex items-center">
-            {/* Cloud sync group */}
             <div className="flex items-center gap-1 mr-3 border-r pr-3 border-gray-200 dark:border-gray-700">
               <button
-                onClick={syncWithCloud}
+                onClick={saveAllFiles}
+                disabled={isSyncing}
+                className={`p-1.5 rounded-md transition-colors
+                  ${
+                    theme === "light"
+                      ? "text-green-500 hover:bg-green-50"
+                      : "text-green-400 hover:bg-green-900/20"
+                  } disabled:opacity-50`}
+                title="Save all to cloud"
+              >
+                <MdOutlineCloudSync className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={pullAllFromCloud}
                 disabled={isSyncing}
                 className={`p-1.5 rounded-md transition-colors
                   ${
@@ -117,30 +194,12 @@ export const FileExplorer = React.memo(function FileExplorer({
                       ? "text-blue-500 hover:bg-blue-50"
                       : "text-blue-400 hover:bg-blue-900/20"
                   } disabled:opacity-50`}
-                title="Save to Cloud"
+                title="Restore all from cloud"
               >
-                {isSyncing ? (
-                  <FaSpinner className="w-3 h-3 animate-spin" />
-                ) : (
-                  <FaCloudUploadAlt className="w-3 h-3" />
-                )}
-              </button>
-              <button
-                onClick={pullFromCloud}
-                disabled={isSyncing}
-                className={`p-1.5 rounded-md transition-colors
-                  ${
-                    theme === "light"
-                      ? "text-amber-500 hover:bg-amber-50"
-                      : "text-amber-400 hover:bg-amber-900/20"
-                  } disabled:opacity-50`}
-                title="Restore from Cloud"
-              >
-                <FaUndo className="w-3 h-3" />
+                <MdCloudDownload className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* File management group */}
             <div className="flex items-center gap-1">
               <button
                 onClick={handleUploadClick}
@@ -178,7 +237,6 @@ export const FileExplorer = React.memo(function FileExplorer({
         </div>
       </div>
 
-      {/* Add search bar */}
       <div className={`px-3 py-2 border-b ${
         theme === "light" 
           ? "border-gray-100" 
@@ -207,7 +265,7 @@ export const FileExplorer = React.memo(function FileExplorer({
         {getFilteredFiles(files, searchTerm).map((file) => (
           <div
             key={file.id}
-            className={`flex items-center px-3 py-2 cursor-pointer transition-all duration-200
+            className={`group flex items-center px-3 py-2 cursor-pointer transition-all duration-200
             ${
               activeFile === file.id
                 ? theme === "light"
@@ -253,17 +311,38 @@ export const FileExplorer = React.memo(function FileExplorer({
                 {file.name}
               </span>
             )}
-            {/* Thay đổi màu của trạng thái sync */}
+            {/* Thay đổi hiển thị nút sync */}
             {!file.isSynced && (
-              <span
-                className={`text-xs ml-2 ${
-                  theme === "light" 
-                    ? "text-amber-500" 
-                    : "text-amber-400"
-                }`}
-              >
-                Unsynced
-              </span>
+              <div className="flex gap-1 ml-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    syncFileWithCloud(file.id);
+                  }}
+                  className={`p-1 rounded-md transition-colors ${
+                    theme === "light"
+                      ? "text-blue-500 hover:bg-blue-50"
+                      : "text-blue-400 hover:bg-blue-900/20"
+                  }`}
+                  title="Save to cloud"
+                >
+                  <MdOutlineCloudDone className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    pullFileFromCloud(file.id);
+                  }}
+                  className={`p-1 rounded-md transition-colors ${
+                    theme === "light"
+                      ? "text-amber-500 hover:bg-amber-50"
+                      : "text-amber-400 hover:bg-amber-900/20"
+                  }`}
+                  title="Restore from cloud"
+                >
+                  <MdHistory className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
         ))}
@@ -275,40 +354,53 @@ export const FileExplorer = React.memo(function FileExplorer({
           y={contextMenu.y}
           onClose={handleContextMenuClose}
         >
-          <button
-            className={`w-full px-4 py-2 text-sm text-left transition-colors
-              ${
-                theme === "light"
-                  ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                  : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
-              }`}
-            onClick={() => {
-              setRenamingFileId(contextMenu.id);
-              handleContextMenuClose();
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <FaPencilAlt size={12} />
-              <span>Rename</span>
-            </div>
-          </button>
-          <button
-            className={`w-full px-4 py-2 text-sm text-left transition-colors
-              ${
-                theme === "light"
-                  ? "text-red-600 hover:bg-red-50"
-                  : "text-red-400 hover:bg-red-900/20"
-              }`}
-            onClick={() => {
-              onDeleteFile(contextMenu.id);
-              handleContextMenuClose();
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <FaTrash size={12} />
-              <span>Delete</span>
-            </div>
-          </button>
+          <div onClick={(e) => e.stopPropagation()}> {/* Add this wrapper */}
+            <button
+              className={`w-full px-4 py-2 text-sm text-left transition-colors
+                ${
+                  theme === "light"
+                    ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
+                }`}
+              onClick={() => handleRenameTab(contextMenu.id)}
+            >
+              <div className="flex items-center gap-3">
+                <FaPencilAlt size={12} />
+                <span>Rename</span>
+              </div>
+            </button>
+            <button
+              className={`w-full px-4 py-2 text-sm text-left transition-colors
+                ${
+                  theme === "light"
+                    ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
+                }`}
+              onClick={(e) => handleDownloadFile(e, contextMenu.id)}
+            >
+              <div className="flex items-center gap-3">
+                <FaDownload size={12} />
+                <span>Download</span>
+              </div>
+            </button>
+            <button
+              className={`w-full px-4 py-2 text-sm text-left transition-colors
+                ${
+                  theme === "light"
+                    ? "text-red-600 hover:bg-red-50"
+                    : "text-red-400 hover:bg-red-900/20"
+                }`}
+              onClick={() => {
+                onDeleteFile(contextMenu.id);
+                handleContextMenuClose();
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <FaTrash size={12} />
+                <span>Delete</span>
+              </div>
+            </button>
+          </div>
         </ContextMenu>
       )}
     </div>

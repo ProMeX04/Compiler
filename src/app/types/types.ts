@@ -29,18 +29,3 @@ export interface TestCase {
   passed?: boolean;
 }
 
-export interface FileExplorerProps {
-  files: FileTab[];
-  activeFile: string | null;
-  onSelectFile: (id: string) => void;
-  onContextMenu: (event: React.MouseEvent, id: string) => void;
-  onRenameFile: (id: string, newName: string) => void;
-  onDeleteFile: (id: string) => void;
-  onAddFile: () => void;
-  isSyncing: boolean;
-  syncWithCloud: () => void;
-  pullFromCloud: () => void;
-  onUploadFile: (file: File) => void;
-  searchTerm?: string;
-  onSearch: (term: string) => void;
-}

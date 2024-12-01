@@ -11,14 +11,14 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 import { useFileManager } from "@/app/hooks/useFileManager";
 import { usePistonRuntimes } from "@/app/hooks/usePistonRuntimes";
 import { saveFileToIDB } from "@/app/utils/idb";
-import { getLanguageExtension } from "@/app/config/languagesConfig/categories";
 import { defaultMainEditorOptions } from "@/app/config/editor/monaco";
 import WelcomeGuide from "@/app/components/Editor/WelcomeGuide";
 import { PanelResizeHandle } from "react-resizable-panels";
 import { MonacoEditor, InputOutputPanel } from "./Editor";
 import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
-import { addDuplicateLineCommand } from "../config/editor/shortcuts";
+import { addDuplicateLineCommand } from "../config/editor/monaco";
+import useTestingState from "@/app/hooks/useTestingState";
 
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
@@ -55,10 +55,14 @@ export function CodeEditor({
     handleLanguageChange,
     addFile,
     isSyncing,
-    syncWithCloud,
-    pullFromCloud,
     removeFile,
-    uploadFile, // Make sure this is destructured
+    uploadFile,
+    saveAllFiles,
+    pullAllFromCloud,
+    updateFile,
+    syncFileWithCloud,
+    pullFileFromCloud,
+    handleRenameFile,
   } = useFileManager({
     defaultContent,
     defaultFileName,
@@ -67,8 +71,17 @@ export function CodeEditor({
   });
 
   const { getLatestVersion } = usePistonRuntimes();
-  const [input, setInput] = useState("");    // changed from testCase
-  const [output, setOutput] = useState("");
+  const { 
+    input, 
+    output, 
+    testCases, 
+    setInput, 
+    setOutput, 
+    setTestCases, 
+    handleTestCaseChange, 
+    addTestCase, 
+    removeTestCase 
+  } = useTestingState(initialTestCases);
   const [, setCursorPosition] = useState<CursorPosition>({
     line: 1,
     column: 1,
@@ -77,7 +90,6 @@ export function CodeEditor({
   const [editorMode, setEditorMode] = useState<"code" | "test" | "editor">(
     "editor"
   );
-  const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
   const [isExplorerVisible, setIsExplorerVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -122,7 +134,7 @@ export function CodeEditor({
           activeFile.language,
           version,
           activeFile.content,
-          input     // changed from testCase
+          input
         );
         setOutput(result.output);
         setExecutionTime(result.executionTime);
@@ -137,7 +149,7 @@ export function CodeEditor({
   }, [
     activeFile,
     editorMode,
-    input,    // changed from testCase
+    input,
     testCases,
     getLatestVersion,
     runTests,
@@ -155,7 +167,15 @@ export function CodeEditor({
     await compileAndRun();
   }, [editorMode, compileAndRun]);
 
-  const saveActiveFile = useCallback(() => {
+  const saveActiveFileToCloud = useCallback(async () => {
+    if (!activeFile) return;
+    try {
+      await syncFileWithCloud(activeFile.id);
+    } catch{
+    }
+  }, [activeFile, syncFileWithCloud]);
+
+  const downloadActiveFile = useCallback(() => {
     if (!activeFile) return;
 
     const blob = new Blob([activeFile.content], { type: "text/plain" });
@@ -174,7 +194,7 @@ export function CodeEditor({
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         e.stopPropagation();
-        saveActiveFile();
+        await saveActiveFileToCloud();
         return;
       }
 
@@ -184,7 +204,7 @@ export function CodeEditor({
         await handleRunClick();
       }
     },
-    [handleRunClick, saveActiveFile]
+    [handleRunClick, saveActiveFileToCloud]
   );
 
   useEffect(() => {
@@ -198,11 +218,6 @@ export function CodeEditor({
     }
   }, [activeFile]);
 
-  const handleContextMenu = (event: React.MouseEvent, id: string) => {
-    event.preventDefault();
-    setContextMenu({ id, x: event.clientX, y: event.clientY });
-  };
-
   const handleCloseContextMenu = () => {
     setContextMenu(null);
   };
@@ -210,24 +225,6 @@ export function CodeEditor({
   const handleRenameTab = (id: string) => {
     setRenamingFileId(id);
     handleCloseContextMenu();
-  };
-
-  const handleTestCaseChange = (
-    index: number,
-    field: keyof TestCase,
-    value: string
-  ) => {
-    setTestCases((prev) =>
-      prev.map((tc, i) => (i === index ? { ...tc, [field]: value } : tc))
-    );
-  };
-
-  const addTestCase = () => {
-    setTestCases((prev) => [...prev, { input: "", expectedOutput: "" }]);
-  };
-
-  const removeTestCase = (index: number) => {
-    setTestCases((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleEditorMount = useCallback(
@@ -266,25 +263,6 @@ export function CodeEditor({
     [files, setFiles]
   );
 
-  const handleRenameFile = async (id: string, newName: string) => {
-    const updatedFiles = files.map((file) => {
-      if (file.id === id) {
-        const nameWithoutExt = newName.split(".")[0];
-        const extension = getLanguageExtension(file.language);
-        return { ...file, name: `${nameWithoutExt}.${extension}` };
-      }
-      return file;
-    });
-
-    setFiles(updatedFiles);
-    const updatedFile = updatedFiles.find((file) => file.id === id);
-    if (updatedFile) {
-      await saveFileToIDB(updatedFile);
-    }
-
-    setRenamingFileId(null);
-  };
-
   const handleSubmit = async () => {
     if (!activeFile || !onSubmit) return;
 
@@ -313,7 +291,7 @@ export function CodeEditor({
       <Panel
         id="editor-panel"
         order={2}
-        defaultSize={editorMode === "editor" ? 85 : 60}
+        defaultSize={editorMode === "editor" ? 80 : 60}
         minSize={20}
       >
         {activeFile ? (
@@ -372,23 +350,25 @@ export function CodeEditor({
               <Panel
                 id="explorer-panel"
                 order={1}
-                defaultSize={15}
+                defaultSize={20}
                 minSize={10}
               >
                 <FileExplorer
                   files={files}
                   activeFile={activeFileId}
-                  onSelectFile={handleFileSelect} // Use the new handler here
-                  onContextMenu={handleContextMenu}
+                  onSelectFile={handleFileSelect}
                   onRenameFile={handleRenameFile}
                   onDeleteFile={handleDeleteFile}
-                  onAddFile={addFile} // Đảm bảo truyền prop này
+                  onAddFile={addFile}
                   isSyncing={isSyncing}
-                  syncWithCloud={syncWithCloud}
-                  pullFromCloud={pullFromCloud}
-                  onUploadFile={uploadFile} // Ensure this prop is correctly passed
+                  onUploadFile={uploadFile}
                   searchTerm={searchTerm}
                   onSearch={setSearchTerm}
+                  saveAllFiles={saveAllFiles}
+                  pullAllFromCloud={pullAllFromCloud}
+                  updateFile={updateFile}
+                  syncFileWithCloud={syncFileWithCloud}
+                  pullFileFromCloud={pullFileFromCloud}
                 />
               </Panel>
               <PanelResizeHandle
@@ -413,9 +393,9 @@ export function CodeEditor({
                 ) : (
                   <MemoizedInputOutputPanel
                     currentTheme={currentTheme}
-                    input={input}           // changed from testCase
+                    input={input}
                     output={output}
-                    onInputChange={setInput}     // changed from onTestCaseChange
+                    onInputChange={setInput}
                     onOutputChange={setOutput}
                   />
                 )}
@@ -440,6 +420,16 @@ export function CodeEditor({
             onClick={() => handleRenameTab(contextMenu.id)}
           >
             Rename
+          </button>
+          <button
+            className={`w-full px-4 py-1.5 text-sm text-left ${
+              theme === "light"
+                ? "text-gray-800 hover:bg-gray-100"
+                : "text-white hover:bg-zinc-700"
+            }`}
+            onClick={downloadActiveFile}
+          >
+            Download
           </button>
         </ContextMenu>
       )}

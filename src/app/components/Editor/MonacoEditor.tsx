@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-import { addMouseWheelZoom } from "../../config/editor/shortcuts";
+import { addMouseWheelZoom } from "../../config/editor/monaco";
 import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback } from "react";
 
