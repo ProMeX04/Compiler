@@ -27,6 +27,7 @@ interface UseFileManagerProps {
   templateCodes?: { [key: string]: string };
 }
 
+
 export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
   const { user } = useFirebaseAuth();
   const [files, setFiles] = useState<FileTabType[]>([]);
@@ -138,6 +139,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       language: defaultLanguage,
       active: true,
       isSynced: false,
+      isShared: false,
     };
 
     await saveFileToIDB(newFile);
@@ -396,6 +398,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
         language,
         active: true,
         isSynced: false,
+        isShared: false
       };
       await saveFileToIDB(newFile);
       setFiles((prev) => [...prev, newFile]);
@@ -439,6 +442,78 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     setRenamingFileId(null);
   };
 
+  const shareFile = async (fileId: string): Promise<string> => {
+    try {
+      if (!user) throw new Error("User must be logged in to share files");
+
+      const fileToShare = files.find(f => f.id === fileId);
+      if (!fileToShare) throw new Error("File not found");
+
+      // Update file in userCodes with isShared flag
+      const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
+      await setDoc(fileRef, {
+        ...fileToShare,
+        isShared: true
+      }, { merge: true });
+
+      // Update local state
+      const updatedFiles = files.map(f => 
+        f.id === fileId ? { ...f, isShared: true } : f
+      );
+      setFiles(updatedFiles);
+
+      // Generate share link with userId/fileId
+      const shareCode = btoa(`${user.uid}/${fileId}`);
+      return `${window.location.origin}?shareCode=${shareCode}`;
+    } catch (error) {
+      console.error("Error sharing file:", error);
+      throw error;
+    }
+  };
+
+  // Function to handle accessing shared file
+  const accessSharedFile = async (shareCode: string) => {
+    try {
+      // Decode userId and fileId from shareCode
+      const [userId, fileId] = atob(shareCode).split('/');
+      if (!userId || !fileId) {
+        console.log("Invalid share code");
+        return false;
+      }
+
+      // Access file directly from userCodes collection
+      const fileRef = doc(db, "userCodes", userId, "files", fileId);
+      const fileDoc = await getDoc(fileRef);
+      
+      if (!fileDoc.exists() || !fileDoc.data().isShared) {
+        console.log("File not found or not shared");
+        return false;
+      }
+
+      const fileData = { 
+        id: fileId, 
+        ...fileDoc.data() 
+      } as FileTabType;
+
+      // Only add to state if not already present
+      if (!files.some(f => f.id === fileId)) {
+        const sharedFile = {
+          ...fileData,
+          isShared: true,
+          readOnly: user?.uid !== userId,
+          active: true
+        };
+        setFiles(prev => [...prev, sharedFile]);
+      }
+      setActiveFileId(fileId);
+      return true;
+
+    } catch (error) {
+      console.error("Error accessing shared file:", error);
+      return false;
+    }
+  };
+
   const activeFile = files.find((file) => file.id === activeFileId);
 
   return {
@@ -467,5 +542,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     syncFileWithCloud,
     pullFileFromCloud,
     handleRenameFile,
+    shareFile,
+    accessSharedFile,
   };
 }

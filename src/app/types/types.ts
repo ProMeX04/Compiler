@@ -8,6 +8,7 @@ export interface FileTab {
   language: string;
   active: boolean;
   isSynced: boolean;
+  isShared?: boolean;
 }
 
 export interface CursorPosition {

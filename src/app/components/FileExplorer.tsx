@@ -10,6 +10,7 @@ import {
   FaUpload,
   FaSearch,
   FaDownload,
+  FaShareAlt,
 } from "react-icons/fa";
 import { 
   MdOutlineCloudSync,
@@ -35,6 +36,7 @@ export interface FileExplorerProps {
   updateFile: (id: string, data: Partial<FileTab>) => void;
   syncFileWithCloud: (id: string) => void;
   pullFileFromCloud: (id: string) => void;
+  shareFile: (id: string) => Promise<string>;
 }
 
 export const FileExplorer = React.memo(function FileExplorer({
@@ -52,6 +54,7 @@ export const FileExplorer = React.memo(function FileExplorer({
   pullAllFromCloud,
   syncFileWithCloud,
   pullFileFromCloud,  
+  shareFile,
 }: FileExplorerProps) {
   const { theme } = useTheme();
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
@@ -61,6 +64,7 @@ export const FileExplorer = React.memo(function FileExplorer({
     y: number;
     id: string;
   } | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleRenameComplete = () => {
@@ -108,6 +112,19 @@ export const FileExplorer = React.memo(function FileExplorer({
     URL.revokeObjectURL(url);
     handleContextMenuClose();
   }, [files]);
+
+  const handleShareFile = async (id: string) => {
+    try {
+      const link = await shareFile(id);
+      setShareLink(link);
+      handleContextMenuClose();
+    } catch (error) {
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : "Failed to share file";
+      // You might want to add a toast notification system here
+      console.error("Error sharing file:", errorMessage);
+    }
+  };
 
   useEffect(() => {
     const handleWindowClick = () => {
@@ -344,6 +361,9 @@ export const FileExplorer = React.memo(function FileExplorer({
                 </button>
               </div>
             )}
+            {file.isShared && (
+              <span className="ml-2 text-xs text-green-500">Shared</span>
+            )}
           </div>
         ))}
       </div>
@@ -387,6 +407,20 @@ export const FileExplorer = React.memo(function FileExplorer({
               className={`w-full px-4 py-2 text-sm text-left transition-colors
                 ${
                   theme === "light"
+                    ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
+                }`}
+              onClick={() => handleShareFile(contextMenu.id)}
+            >
+              <div className="flex items-center gap-3">
+                <FaShareAlt size={12} />
+                <span>{files.find(f => f.id === contextMenu.id)?.isShared ? 'Shared' : 'Share'}</span>
+              </div>
+            </button>
+            <button
+              className={`w-full px-4 py-2 text-sm text-left transition-colors
+                ${
+                  theme === "light"
                     ? "text-red-600 hover:bg-red-50"
                     : "text-red-400 hover:bg-red-900/20"
                 }`}
@@ -402,6 +436,28 @@ export const FileExplorer = React.memo(function FileExplorer({
             </button>
           </div>
         </ContextMenu>
+      )}
+
+      {shareLink && (
+        <div className="fixed bottom-4 left-4 bg-white dark:bg-[#252526] p-3 rounded shadow-lg">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={shareLink}
+              className="flex-1 px-2 py-1 border rounded text-sm"
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(shareLink);
+                setShareLink(null);
+              }}
+              className="px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

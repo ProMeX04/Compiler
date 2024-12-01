@@ -19,6 +19,7 @@ import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
 import { addDuplicateLineCommand } from "../config/editor/monaco";
 import useTestingState from "@/app/hooks/useTestingState";
+import { useSearchParams } from 'next/navigation'; // Change this import
 
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
@@ -45,6 +46,8 @@ export function CodeEditor({
   templateCodes = {},
   onSubmit,
 }: CodeEditorProps) {
+  const searchParams = useSearchParams();
+  const shareCode = searchParams.get('shareCode');
   const {
     files,
     setFiles,
@@ -63,12 +66,31 @@ export function CodeEditor({
     syncFileWithCloud,
     pullFileFromCloud,
     handleRenameFile,
+    shareFile,
+    accessSharedFile,
   } = useFileManager({
     defaultContent,
     defaultFileName,
     defaultLanguage,
     templateCodes,
   });
+
+  useEffect(() => {
+    const loadSharedFile = async () => {
+      if (shareCode) {
+        try {
+          const file = await accessSharedFile(shareCode);
+          if (!file) {
+            console.error("File not found or not shared");
+          }
+        } catch (error) {
+          console.error("Error loading shared file:", error);
+        }
+      }
+    };
+
+    loadSharedFile();
+  }, [shareCode]);
 
   const { getLatestVersion } = usePistonRuntimes();
   const { 
@@ -369,6 +391,7 @@ export function CodeEditor({
                   updateFile={updateFile}
                   syncFileWithCloud={syncFileWithCloud}
                   pullFileFromCloud={pullFileFromCloud}
+                  shareFile={shareFile}
                 />
               </Panel>
               <PanelResizeHandle
