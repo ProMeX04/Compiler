@@ -6,7 +6,7 @@ interface Example {
   input: string;
   output: string;
   explanation?: string;
-}
+};
 
 export interface CreateExerciseFormProps {
   onSubmit: (exercise: any) => Promise<void>;
