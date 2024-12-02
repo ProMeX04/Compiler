@@ -19,7 +19,7 @@ import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
 import { addDuplicateLineCommand } from "../config/editor/monaco";
 import useTestingState from "@/app/hooks/useTestingState";
-import { useSearchParams } from 'next/navigation'; // Change this import
+import ExerciseDisplay from "./Editor/ExerciseDisplay";
 
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
@@ -38,6 +38,16 @@ export interface CodeEditorProps {
   ) => Promise<void>;
 }
 
+function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  return mounted;
+}
+
 export function CodeEditor({
   defaultContent = "",
   defaultFileName = "main",
@@ -46,8 +56,16 @@ export function CodeEditor({
   templateCodes = {},
   onSubmit,
 }: CodeEditorProps) {
-  const searchParams = useSearchParams();
-  const shareCode = searchParams.get('shareCode');
+  const isMounted = useMounted();
+  // Move useSearchParams inside useEffect to avoid hydration mismatch
+  const [shareCode, setShareCode] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('shareCode');
+    setShareCode(code);
+  }, []);
+
   const {
     files,
     setFiles,
@@ -109,11 +127,16 @@ export function CodeEditor({
     column: 1,
   });
   const { currentTheme, theme } = useTheme();
-  const [editorMode, setEditorMode] = useState<"code" | "test" | "editor">(
+  const [editorMode, setEditorMode] = useState<"code" | "test" | "editor" | "exercise">(
     "editor"
   );
   const [isExplorerVisible, setIsExplorerVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isExerciseVisible, setIsExerciseVisible] = useState(false);
+
+  const onToggleExercise = () => {
+    setIsExerciseVisible((prev) => !prev);
+  };
 
   const {
     isCompiling,
@@ -344,6 +367,10 @@ export function CodeEditor({
     ]
   );
 
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <div
       className={`flex flex-col h-screen ${
@@ -363,6 +390,7 @@ export function CodeEditor({
           isExplorerVisible={isExplorerVisible}
           toggleExplorer={() => setIsExplorerVisible(!isExplorerVisible)}
           rightElements={undefined}
+          onToggleExercise={onToggleExercise}
         />
       </div>
       <div className="flex-1 flex overflow-hidden">
@@ -401,8 +429,11 @@ export function CodeEditor({
               />
             </>
           )}
+          
           {editorPanel}
-          {editorMode !== "editor" && (
+
+          {/* Thay đổi phần này để xử lý exercise mode */}
+          {(editorMode === "test" || editorMode === "code" || editorMode === "exercise") && (
             <>
               <PanelResizeHandle />
               <Panel id="output-panel" order={3} defaultSize={25} minSize={5}>
@@ -413,6 +444,8 @@ export function CodeEditor({
                     onAddTestCase={addTestCase}
                     onRemoveTestCase={removeTestCase}
                   />
+                ) : editorMode === "exercise" ? (
+                  <ExerciseDisplay />
                 ) : (
                   <MemoizedInputOutputPanel
                     currentTheme={currentTheme}

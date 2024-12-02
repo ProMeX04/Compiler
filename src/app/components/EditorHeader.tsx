@@ -9,6 +9,7 @@ import {
   FaExpand,
   FaBars,
   FaUser,
+  FaBook,
 } from "react-icons/fa";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
@@ -89,10 +90,10 @@ const getIconColor = (theme: string, currentLanguage: string) => {
 };
 
 interface EditorHeaderProps {
-  editorMode: "code" | "test" | "editor";
+  editorMode: "code" | "test" | "editor" | "exercise";
   isCompiling: boolean;
   executionTime: number | null;
-  onEditorModeChange: (mode: "code" | "test" | "editor") => void;
+  onEditorModeChange: (mode: "code" | "test" | "editor" | "exercise") => void;
   onCompileAndRun: () => void;
   onSubmit?: () => void;
   onLanguageChange: (language: string) => void;
@@ -100,6 +101,7 @@ interface EditorHeaderProps {
   isExplorerVisible: boolean;
   toggleExplorer: () => void;
   rightElements?: React.ReactNode;
+  onToggleExercise: () => void;
 }
 
 export const EditorHeader = memo(function EditorHeader({
@@ -111,6 +113,7 @@ export const EditorHeader = memo(function EditorHeader({
   onLanguageChange,
   currentLanguage,
   toggleExplorer,
+  onToggleExercise,
 }: EditorHeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useFirebaseAuth();
@@ -280,11 +283,17 @@ export const EditorHeader = memo(function EditorHeader({
                 label: "Full",
                 color: theme === "light" ? "#f59e0b" : "#fbbf24",
               },
+              {
+                mode: "exercise",
+                icon: FaBook,
+                label: "Exercise",
+                color: theme === "light" ? "#10b981" : "#6ee7b7",
+              },
             ].map(({ mode, icon: Icon, label, color }) => (
               <HeaderButton
                 key={mode}
                 onClick={() =>
-                  onEditorModeChange(mode as "code" | "test" | "editor")
+                  onEditorModeChange(mode as "code" | "test" | "editor" | "exercise")
                 }
                 className={`px-2 py-1 ${
                   editorMode === mode

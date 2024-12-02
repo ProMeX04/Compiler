@@ -439,20 +439,32 @@ export const FileExplorer = React.memo(function FileExplorer({
       )}
 
       {shareLink && (
-        <div className="fixed bottom-4 left-4 bg-white dark:bg-[#252526] p-3 rounded shadow-lg">
+        <div className={`fixed bottom-4 left-4 p-4 rounded-lg shadow-lg ${
+          theme === "light" 
+            ? "bg-white border border-gray-200" 
+            : "bg-[#2d2d2d] border border-zinc-700"
+        }`}>
           <div className="flex items-center gap-2">
             <input
               type="text"
               readOnly
               value={shareLink}
-              className="flex-1 px-2 py-1 border rounded text-sm"
+              className={`flex-1 px-2 py-1.5 rounded text-sm outline-none ${
+                theme === "light"
+                  ? "bg-gray-50 border border-gray-200 text-gray-800"
+                  : "bg-[#1e1e1e] border border-zinc-700 text-gray-200"
+              }`}
             />
             <button
               onClick={() => {
                 navigator.clipboard.writeText(shareLink);
                 setShareLink(null);
               }}
-              className="px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+              className={`px-3 py-1.5 text-sm rounded transition-colors ${
+                theme === "light"
+                  ? "bg-blue-500 hover:bg-blue-600 text-white"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
             >
               Copy
             </button>

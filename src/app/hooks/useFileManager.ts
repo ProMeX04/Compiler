@@ -17,7 +17,8 @@ import { db } from "../firebaseConfig";
 import {
   saveFileToIDB,
   getAllFilesFromIDB,
-  deleteFileFromIDB
+  deleteFileFromIDB,
+  clearIDB, // Add this import
 } from "@/app/utils/idb";
 
 interface UseFileManagerProps {
@@ -360,6 +361,9 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
 
     setIsSyncing(true);
     try {
+      // Clear all files from IndexedDB first
+      await clearIDB();
+      
       const filesCollection = collection(db, "userCodes", user.uid, "files");
       const querySnapshot = await getDocs(filesCollection);
       const cloudFiles = querySnapshot.docs.map((doc) => ({
@@ -474,40 +478,80 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
   // Function to handle accessing shared file
   const accessSharedFile = async (shareCode: string) => {
     try {
-      // Decode userId and fileId from shareCode
-      const [userId, fileId] = atob(shareCode).split('/');
-      if (!userId || !fileId) {
+      const [ownerId, fileId] = atob(shareCode).split('/');
+      if (!ownerId || !fileId) {
         console.log("Invalid share code");
         return false;
       }
-
-      // Access file directly from userCodes collection
-      const fileRef = doc(db, "userCodes", userId, "files", fileId);
+  
+      // If current user is the owner, just activate the existing file
+      if (user?.uid === ownerId) {
+        const existingFile = files.find(f => f.id === fileId);
+        if (existingFile) {
+          // If file exists locally, just set it as active
+          setActiveFileId(fileId);
+          return true;
+        }
+        
+        // If file doesn't exist locally but user is owner, pull from cloud
+        const fileRef = doc(db, "userCodes", ownerId, "files", fileId);
+        const fileDoc = await getDoc(fileRef);
+        
+        if (fileDoc.exists()) {
+          const fileData = { 
+            id: fileId, 
+            ...fileDoc.data(),
+            active: true,
+            isSynced: true
+          } as FileTabType;
+          
+          // Filter out any existing file with the same ID before adding new one
+          setFiles(prev => {
+            const filteredFiles = prev.filter(f => f.id !== fileId);
+            return [...filteredFiles, fileData];
+          });
+          setActiveFileId(fileId);
+          return true;
+        }
+        return false;
+      }
+  
+      const fileRef = doc(db, "userCodes", ownerId, "files", fileId);
       const fileDoc = await getDoc(fileRef);
       
       if (!fileDoc.exists() || !fileDoc.data().isShared) {
         console.log("File not found or not shared");
         return false;
       }
-
+  
+      // Check if file already exists in local state
+      const existingFile = files.find(f => f.id === fileId);
+      if (existingFile) {
+        setActiveFileId(fileId);
+        return true;
+      }
+  
+      // Add new shared file for non-owner, ensuring no duplicates
       const fileData = { 
         id: fileId, 
         ...fileDoc.data() 
       } as FileTabType;
-
-      // Only add to state if not already present
-      if (!files.some(f => f.id === fileId)) {
-        const sharedFile = {
-          ...fileData,
-          isShared: true,
-          readOnly: user?.uid !== userId,
-          active: true
-        };
-        setFiles(prev => [...prev, sharedFile]);
-      }
+  
+      const sharedFile = {
+        ...fileData,
+        isShared: true,
+        readOnly: true,
+        active: true
+      };
+      
+      // Filter out any existing file with the same ID before adding new one
+      setFiles(prev => {
+        const filteredFiles = prev.filter(f => f.id !== fileId);
+        return [...filteredFiles, sharedFile];
+      });
       setActiveFileId(fileId);
       return true;
-
+  
     } catch (error) {
       console.error("Error accessing shared file:", error);
       return false;

@@ -40,3 +40,10 @@ export async function deleteFileFromIDB(id: string): Promise<void> {
   const db = await initDB();
   await db.delete('files', id);
 }
+
+export async function clearIDB(): Promise<void> {
+  const db = await initDB();
+  const tx = db.transaction('files', 'readwrite');
+  await tx.objectStore('files').clear();
+  await tx.done;
+}
