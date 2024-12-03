@@ -9,8 +9,8 @@ import {
   FaExpand,
   FaBars,
   FaUser,
-  FaBook,
 } from "react-icons/fa";
+import { FaWandSparkles } from 'react-icons/fa6';  // Add this import
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
   LANGUAGE_CONFIGS,
@@ -21,7 +21,6 @@ import { LoginModal } from "@/app/components/LoginModal";
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 
-// Update button styles with modern design
 const BUTTON_BASE =
   "flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-md transition-all duration-200";
 const BUTTON_ACTIVE = (theme: string) =>
@@ -33,7 +32,6 @@ const BUTTON_INACTIVE = (theme: string) =>
     ? "hover:bg-gray-50 text-gray-600 hover:text-gray-900 hover:shadow-sm"
     : "hover:bg-zinc-800/80 text-gray-400 hover:text-gray-200 hover:shadow-inner";
 
-// Create reusable button component
 const HeaderButton = memo(
   React.forwardRef<
     HTMLButtonElement,
@@ -51,7 +49,6 @@ const HeaderButton = memo(
 );
 HeaderButton.displayName = "HeaderButton";
 
-// Add this new style constant
 const SELECT_STYLES = (theme: string) => `
   ${BUTTON_BASE} ${BUTTON_INACTIVE(theme)}
   min-w-[120px] relative appearance-none pr-7 pl-2
@@ -62,7 +59,6 @@ const SELECT_STYLES = (theme: string) => `
   }
 `;
 
-// Adjust icon colors for dark mode
 const getIconColor = (theme: string, currentLanguage: string) => {
   const colors = {
     cpp: theme === "light" ? "#00599C" : "#2E96FF",
@@ -90,18 +86,17 @@ const getIconColor = (theme: string, currentLanguage: string) => {
 };
 
 interface EditorHeaderProps {
-  editorMode: "code" | "test" | "editor" | "exercise";
+  editorMode: "code" | "test" | "editor";
   isCompiling: boolean;
   executionTime: number | null;
-  onEditorModeChange: (mode: "code" | "test" | "editor" | "exercise") => void;
+  onEditorModeChange: (mode: "code" | "test" | "editor") => void;
   onCompileAndRun: () => void;
   onSubmit?: () => void;
   onLanguageChange: (language: string) => void;
   currentLanguage: string;
   isExplorerVisible: boolean;
   toggleExplorer: () => void;
-  rightElements?: React.ReactNode;
-  onToggleExercise: () => void;
+  onFormatCode: () => Promise<void>;
 }
 
 export const EditorHeader = memo(function EditorHeader({
@@ -113,7 +108,7 @@ export const EditorHeader = memo(function EditorHeader({
   onLanguageChange,
   currentLanguage,
   toggleExplorer,
-  onToggleExercise,
+  onFormatCode,
 }: EditorHeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useFirebaseAuth();
@@ -124,7 +119,6 @@ export const EditorHeader = memo(function EditorHeader({
   });
   const loginButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Memoize handlers
   const handleRunClick = useCallback(() => {
     if (editorMode === "editor") {
       onEditorModeChange("code");
@@ -136,8 +130,8 @@ export const EditorHeader = memo(function EditorHeader({
     if (loginButtonRef.current) {
       const rect = loginButtonRef.current.getBoundingClientRect();
       setLoginModalPosition({
-        top: rect.bottom + 5, // Add small offset from button
-        left: Math.max(10, rect.right - 320), // Align right edge with some padding
+        top: rect.bottom + 5,
+        left: Math.max(10, rect.right - 320), 
       });
     }
     setIsLoginModalOpen(true);
@@ -145,8 +139,6 @@ export const EditorHeader = memo(function EditorHeader({
 
   useEffect(() => {
     if (user) {
-      // This effect could be used to notify CodeEditor to fetch user code
-      // Alternatively, CodeEditor handles fetching based on user context
     }
   }, [user]);
 
@@ -175,8 +167,6 @@ export const EditorHeader = memo(function EditorHeader({
           </HeaderButton>
 
           <div className="h-4 w-[1px] mx-1 opacity-20 bg-current" />
-
-          {/* Move language selector here */}
           <div className="relative flex items-center">
             <select
               value={currentLanguage}
@@ -213,9 +203,20 @@ export const EditorHeader = memo(function EditorHeader({
           </div>
         </div>
 
-        {/* Center section */}
         <div className="flex items-center gap-2">
-          {/* Move Run button here */}
+          {/* Add format button before Run button */}
+          <HeaderButton
+            onClick={onFormatCode}
+            disabled={isCompiling}
+            title="Format Code (Alt+Shift+F)"
+            className={`${BUTTON_INACTIVE(theme)}`}
+          >
+            <FaWandSparkles 
+              className="w-3 h-3"
+              style={{ color: theme === "light" ? "#8b5cf6" : "#a78bfa" }}
+            />
+          </HeaderButton>
+
           <HeaderButton
             onClick={handleRunClick}
             disabled={isCompiling}
@@ -282,18 +283,12 @@ export const EditorHeader = memo(function EditorHeader({
                 icon: FaExpand,
                 label: "Full",
                 color: theme === "light" ? "#f59e0b" : "#fbbf24",
-              },
-              {
-                mode: "exercise",
-                icon: FaBook,
-                label: "Exercise",
-                color: theme === "light" ? "#10b981" : "#6ee7b7",
-              },
+              }
             ].map(({ mode, icon: Icon, label, color }) => (
               <HeaderButton
                 key={mode}
                 onClick={() =>
-                  onEditorModeChange(mode as "code" | "test" | "editor" | "exercise")
+                  onEditorModeChange(mode as "code" | "test" | "editor")
                 }
                 className={`px-2 py-1 ${
                   editorMode === mode

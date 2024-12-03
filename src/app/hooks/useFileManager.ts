@@ -20,6 +20,7 @@ import {
   deleteFileFromIDB,
   clearIDB, // Add this import
 } from "@/app/utils/idb";
+import { toast } from 'react-hot-toast';
 
 interface UseFileManagerProps {
   defaultContent?: string;
@@ -211,8 +212,8 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       await saveFileToIDB({ ...fileToSync, isSynced: true });
 
       setLastSyncTime(new Date());
-    } catch (error) {
-      console.error("Error syncing file with Cloud:", error);
+    } catch {
+      toast.error("Error syncing file with Cloud");
     } finally {
       setIsSyncing(false);
     }
@@ -220,7 +221,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
 
   const pullFileFromCloud = async (fileId: string) => {
     if (!user || isSyncing) {
-      console.log("Please login to pull from cloud");
+      toast.error("Please login to pull from cloud");
       return;
     }
 
@@ -237,10 +238,10 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
           )
         );
       } else {
-        console.log("No such file in cloud");
+        toast.error("No such file in cloud");
       }
-    } catch (error) {
-      console.error("Error pulling file from Cloud:", error);
+    } catch {
+      toast.error("Error pulling file from cloud");
     } finally {
       setIsSyncing(false);
     }
@@ -279,7 +280,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
 
   const pullFromCloud = async () => {
     if (!user || isSyncing || !activeFileId) {
-      console.log("Please login to pull from cloud");
+      toast.error("Please login to pull from cloud");
       return;
     }
 
@@ -297,10 +298,10 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
         );
         setLastSyncTime(new Date());
       } else {
-        console.log("No such file in cloud");
+        toast.error("No such file in cloud");
       }
-    } catch (error) {
-      console.error("Error pulling from Cloud:", error);
+    } catch {
+      toast.error("Error pulling from Cloud");
     } finally {
       setIsSyncing(false);
     }
@@ -355,7 +356,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
 
   const pullAllFromCloud = async () => {
     if (!user || isSyncing) {
-      console.log("Please login to pull from cloud");
+      toast.error("Please login to pull from cloud");
       return;
     }
 
@@ -382,8 +383,8 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       }
 
       setLastSyncTime(new Date());
-    } catch (error) {
-      console.error("Error pulling all files from Cloud:", error);
+    } catch {
+      toast.error("Error pulling all files from Cloud");
     } finally {
       setIsSyncing(false);
     }
@@ -480,7 +481,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     try {
       const [ownerId, fileId] = atob(shareCode).split('/');
       if (!ownerId || !fileId) {
-        console.log("Invalid share code");
+        toast.error("Invalid share code");
         return false;
       }
   
@@ -520,7 +521,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       const fileDoc = await getDoc(fileRef);
       
       if (!fileDoc.exists() || !fileDoc.data().isShared) {
-        console.log("File not found or not shared");
+        toast.error("File not found or not shared");
         return false;
       }
   
@@ -552,9 +553,32 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       setActiveFileId(fileId);
       return true;
   
-    } catch (error) {
-      console.error("Error accessing shared file:", error);
+    } catch {
+      toast.error("Error accessing shared file");
       return false;
+    }
+  };
+
+  const unshareFile = async (fileId: string): Promise<void> => {
+    try {
+      if (!user) throw new Error("User must be logged in to unshare files");
+
+      const fileToUnshare = files.find(f => f.id === fileId);
+      if (!fileToUnshare) throw new Error("File not found");
+
+      const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
+      await setDoc(fileRef, {
+        ...fileToUnshare,
+        isShared: false
+      }, { merge: true });
+
+      const updatedFiles = files.map(f => 
+        f.id === fileId ? { ...f, isShared: false } : f
+      );
+      setFiles(updatedFiles);
+    } catch (error) {
+      console.error("Error unsharing file:", error);
+      throw error;
     }
   };
 
@@ -588,5 +612,6 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     handleRenameFile,
     shareFile,
     accessSharedFile,
+    unshareFile,
   };
 }

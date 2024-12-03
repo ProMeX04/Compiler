@@ -15,7 +15,7 @@ export function ContextMenu({ x, y, onClose, children }: ContextMenuProps) {
       style={{ top: y, left: x }}
       onClick={onClose}
     >
-      <div className="bg-white dark:bg-[#252526] shadow-lg rounded-md overflow-hidden border dark:border-[#37373d]">
+      <div className="bg-white dark:bg-[#252526] shadow-lg rounded-md overflow-hidden border border-gray-200 dark:border-[#37373d]">
         {children}
       </div>
     </div>,

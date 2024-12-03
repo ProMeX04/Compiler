@@ -19,6 +19,7 @@ import {
   MdHistory 
 } from "react-icons/md";
 import Fuse from 'fuse.js';
+import { toast } from 'react-hot-toast';
 
 export interface FileExplorerProps {
   files: FileTab[];
@@ -37,6 +38,7 @@ export interface FileExplorerProps {
   syncFileWithCloud: (id: string) => void;
   pullFileFromCloud: (id: string) => void;
   shareFile: (id: string) => Promise<string>;
+  unshareFile: (id: string) => Promise<void>;
 }
 
 export const FileExplorer = React.memo(function FileExplorer({
@@ -55,6 +57,7 @@ export const FileExplorer = React.memo(function FileExplorer({
   syncFileWithCloud,
   pullFileFromCloud,  
   shareFile,
+  unshareFile,
 }: FileExplorerProps) {
   const { theme } = useTheme();
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
@@ -64,7 +67,6 @@ export const FileExplorer = React.memo(function FileExplorer({
     y: number;
     id: string;
   } | null>(null);
-  const [shareLink, setShareLink] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleRenameComplete = () => {
@@ -113,16 +115,75 @@ export const FileExplorer = React.memo(function FileExplorer({
     handleContextMenuClose();
   }, [files]);
 
+  const getToastStyle = useCallback(() => ({
+    style: {
+      backgroundColor: theme === 'light' ? '#fff' : '#333',
+      color: theme === 'light' ? '#374151' : '#fff',
+      border: `1px solid ${theme === 'light' ? '#e5e7eb' : '#4b5563'}`,
+    }
+  }), [theme]);
+
   const handleShareFile = async (id: string) => {
     try {
       const link = await shareFile(id);
-      setShareLink(link);
+      await navigator.clipboard.writeText(link);
+      toast.success('Link copied to clipboard!', getToastStyle());
       handleContextMenuClose();
     } catch (error) {
-      // Show user-friendly error message
-      const errorMessage = error instanceof Error ? error.message : "Failed to share file";
-      // You might want to add a toast notification system here
-      console.error("Error sharing file:", errorMessage);
+      toast.error(error instanceof Error ? error.message : "Failed to share file", getToastStyle());
+    }
+  };
+
+  const handleToggleShare = async (id: string) => {
+    try {
+      const file = files.find(f => f.id === id);
+      if (file?.isShared) {
+        await unshareFile(id);
+        toast.success('File unshared', getToastStyle());
+      } else {
+        await handleShareFile(id);
+      }
+      handleContextMenuClose();
+    } catch {
+      toast.error('Failed to toggle share status', getToastStyle());
+    }
+  };
+
+  const handleSyncFile = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await syncFileWithCloud(id);
+      toast.success('File saved to cloud', getToastStyle());
+    } catch {
+      toast.error('Failed to save file to cloud', getToastStyle());
+    }
+  };
+
+  const handlePullFile = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await pullFileFromCloud(id);
+      toast.success('File restored from cloud', getToastStyle());
+    } catch {
+      toast.error('Failed to restore file from cloud', getToastStyle());
+    }
+  };
+
+  const handleSaveAll = async () => {
+    try {
+      await saveAllFiles();
+      toast.success('All files saved to cloud', getToastStyle());
+    } catch {
+      toast.error('Failed to save all files', getToastStyle());
+    }
+  };
+
+  const handlePullAll = async () => {
+    try {
+      await pullAllFromCloud();
+      toast.success('All files restored from cloud', getToastStyle());
+    } catch {
+      toast.error('Failed to restore files from cloud', getToastStyle());
     }
   };
 
@@ -190,7 +251,7 @@ export const FileExplorer = React.memo(function FileExplorer({
           <div className="flex items-center">
             <div className="flex items-center gap-1 mr-3 border-r pr-3 border-gray-200 dark:border-gray-700">
               <button
-                onClick={saveAllFiles}
+                onClick={handleSaveAll}
                 disabled={isSyncing}
                 className={`p-1.5 rounded-md transition-colors
                   ${
@@ -203,7 +264,7 @@ export const FileExplorer = React.memo(function FileExplorer({
                 <MdOutlineCloudSync className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={pullAllFromCloud}
+                onClick={handlePullAll}
                 disabled={isSyncing}
                 className={`p-1.5 rounded-md transition-colors
                   ${
@@ -332,10 +393,7 @@ export const FileExplorer = React.memo(function FileExplorer({
             {!file.isSynced && (
               <div className="flex gap-1 ml-2">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    syncFileWithCloud(file.id);
-                  }}
+                  onClick={(e) => handleSyncFile(e, file.id)}
                   className={`p-1 rounded-md transition-colors ${
                     theme === "light"
                       ? "text-blue-500 hover:bg-blue-50"
@@ -346,10 +404,7 @@ export const FileExplorer = React.memo(function FileExplorer({
                   <MdOutlineCloudDone className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    pullFileFromCloud(file.id);
-                  }}
+                  onClick={(e) => handlePullFile(e, file.id)}
                   className={`p-1 rounded-md transition-colors ${
                     theme === "light"
                       ? "text-amber-500 hover:bg-amber-50"
@@ -379,7 +434,7 @@ export const FileExplorer = React.memo(function FileExplorer({
               className={`w-full px-4 py-2 text-sm text-left transition-colors
                 ${
                   theme === "light"
-                    ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    ? "text-gray-700 bg-white hover:bg-gray-50"
                     : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
                 }`}
               onClick={() => handleRenameTab(contextMenu.id)}
@@ -393,7 +448,7 @@ export const FileExplorer = React.memo(function FileExplorer({
               className={`w-full px-4 py-2 text-sm text-left transition-colors
                 ${
                   theme === "light"
-                    ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    ? "text-gray-700 bg-white hover:bg-gray-50"
                     : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
                 }`}
               onClick={(e) => handleDownloadFile(e, contextMenu.id)}
@@ -407,21 +462,26 @@ export const FileExplorer = React.memo(function FileExplorer({
               className={`w-full px-4 py-2 text-sm text-left transition-colors
                 ${
                   theme === "light"
-                    ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                    ? "text-gray-700 bg-white hover:bg-gray-50"
                     : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
                 }`}
-              onClick={() => handleShareFile(contextMenu.id)}
+              onClick={() => handleToggleShare(contextMenu.id)}
             >
               <div className="flex items-center gap-3">
                 <FaShareAlt size={12} />
-                <span>{files.find(f => f.id === contextMenu.id)?.isShared ? 'Shared' : 'Share'}</span>
+                <span>
+                  {files.find(f => f.id === contextMenu.id)?.isShared 
+                    ? 'Unshare' 
+                    : 'Share'
+                  }
+                </span>
               </div>
             </button>
             <button
               className={`w-full px-4 py-2 text-sm text-left transition-colors
                 ${
                   theme === "light"
-                    ? "text-red-600 hover:bg-red-50"
+                    ? "text-red-600 bg-white hover:bg-red-50"
                     : "text-red-400 hover:bg-red-900/20"
                 }`}
               onClick={() => {
@@ -436,40 +496,6 @@ export const FileExplorer = React.memo(function FileExplorer({
             </button>
           </div>
         </ContextMenu>
-      )}
-
-      {shareLink && (
-        <div className={`fixed bottom-4 left-4 p-4 rounded-lg shadow-lg ${
-          theme === "light" 
-            ? "bg-white border border-gray-200" 
-            : "bg-[#2d2d2d] border border-zinc-700"
-        }`}>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
-              value={shareLink}
-              className={`flex-1 px-2 py-1.5 rounded text-sm outline-none ${
-                theme === "light"
-                  ? "bg-gray-50 border border-gray-200 text-gray-800"
-                  : "bg-[#1e1e1e] border border-zinc-700 text-gray-200"
-              }`}
-            />
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(shareLink);
-                setShareLink(null);
-              }}
-              className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                theme === "light"
-                  ? "bg-blue-500 hover:bg-blue-600 text-white"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-              }`}
-            >
-              Copy
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );

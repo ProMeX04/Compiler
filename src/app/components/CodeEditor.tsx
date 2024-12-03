@@ -19,8 +19,7 @@ import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
 import { addDuplicateLineCommand } from "../config/editor/monaco";
 import useTestingState from "@/app/hooks/useTestingState";
-import ExerciseDisplay from "./Editor/ExerciseDisplay";
-
+import { toast } from 'react-hot-toast';
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
 const MemoizedInputOutputPanel = React.memo(InputOutputPanel);
@@ -57,7 +56,6 @@ export function CodeEditor({
   onSubmit,
 }: CodeEditorProps) {
   const isMounted = useMounted();
-  // Move useSearchParams inside useEffect to avoid hydration mismatch
   const [shareCode, setShareCode] = useState<string | null>(null);
   
   useEffect(() => {
@@ -86,6 +84,7 @@ export function CodeEditor({
     handleRenameFile,
     shareFile,
     accessSharedFile,
+    unshareFile,
   } = useFileManager({
     defaultContent,
     defaultFileName,
@@ -127,16 +126,11 @@ export function CodeEditor({
     column: 1,
   });
   const { currentTheme, theme } = useTheme();
-  const [editorMode, setEditorMode] = useState<"code" | "test" | "editor" | "exercise">(
+  const [editorMode, setEditorMode] = useState<"code" | "test" | "editor">(
     "editor"
   );
   const [isExplorerVisible, setIsExplorerVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isExerciseVisible, setIsExerciseVisible] = useState(false);
-
-  const onToggleExercise = () => {
-    setIsExerciseVisible((prev) => !prev);
-  };
 
   const {
     isCompiling,
@@ -234,8 +228,59 @@ export function CodeEditor({
     URL.revokeObjectURL(url);
   }, [activeFile]);
 
+  const handleTabContentChange = useCallback(
+    async (fileId: string, newContent: string) => {
+      if (!fileId) return;
+
+      const updatedFiles = files.map((file) =>
+        file.id === fileId
+          ? { ...file, content: newContent, isSynced: false }
+          : file
+      );
+      setFiles(updatedFiles);
+
+      const updatedFile = updatedFiles.find((file) => file.id === fileId);
+      if (updatedFile) {
+        await saveFileToIDB(updatedFile);
+      }
+    },
+    [files, setFiles]
+  );
+
+  const formatCode = useCallback(async () => {
+    if (!activeFile) return;
+
+    try {
+      const response = await fetch('/api/gemini/format', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: activeFile.content,
+          language: activeFile.language,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Format request failed');
+      
+      const { formattedCode } = await response.json();
+      if (formattedCode && activeFileId) {
+        await handleTabContentChange(activeFileId, formattedCode);
+        toast.success('Code formatted successfully');
+      }
+    } catch (error) {
+      console.error('Error formatting code:', error);
+      toast.error('Failed to format code');
+    }
+  }, [activeFile, activeFileId, handleTabContentChange]);
+
   const handleKeyDown = useCallback(
     async (e: KeyboardEvent) => {
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        formatCode();
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         e.stopPropagation();
@@ -249,7 +294,7 @@ export function CodeEditor({
         await handleRunClick();
       }
     },
-    [handleRunClick, saveActiveFileToCloud]
+    [handleRunClick, saveActiveFileToCloud, formatCode]
   );
 
   useEffect(() => {
@@ -287,25 +332,6 @@ export function CodeEditor({
       addDuplicateLineCommand(editor, monaco);
     },
     []
-  );
-
-  const handleTabContentChange = useCallback(
-    async (fileId: string, newContent: string) => {
-      if (!fileId) return;
-
-      const updatedFiles = files.map((file) =>
-        file.id === fileId
-          ? { ...file, content: newContent, isSynced: false }
-          : file
-      );
-      setFiles(updatedFiles);
-
-      const updatedFile = updatedFiles.find((file) => file.id === fileId);
-      if (updatedFile) {
-        await saveFileToIDB(updatedFile);
-      }
-    },
-    [files, setFiles]
   );
 
   const handleSubmit = async () => {
@@ -389,8 +415,7 @@ export function CodeEditor({
           currentLanguage={activeFile?.language || defaultLanguage}
           isExplorerVisible={isExplorerVisible}
           toggleExplorer={() => setIsExplorerVisible(!isExplorerVisible)}
-          rightElements={undefined}
-          onToggleExercise={onToggleExercise}
+          onFormatCode={formatCode}
         />
       </div>
       <div className="flex-1 flex overflow-hidden">
@@ -420,6 +445,7 @@ export function CodeEditor({
                   syncFileWithCloud={syncFileWithCloud}
                   pullFileFromCloud={pullFileFromCloud}
                   shareFile={shareFile}
+                  unshareFile={unshareFile}
                 />
               </Panel>
               <PanelResizeHandle
@@ -433,7 +459,7 @@ export function CodeEditor({
           {editorPanel}
 
           {/* Thay đổi phần này để xử lý exercise mode */}
-          {(editorMode === "test" || editorMode === "code" || editorMode === "exercise") && (
+          {(editorMode === "test" || editorMode === "code") && (
             <>
               <PanelResizeHandle />
               <Panel id="output-panel" order={3} defaultSize={25} minSize={5}>
@@ -444,8 +470,6 @@ export function CodeEditor({
                     onAddTestCase={addTestCase}
                     onRemoveTestCase={removeTestCase}
                   />
-                ) : editorMode === "exercise" ? (
-                  <ExerciseDisplay />
                 ) : (
                   <MemoizedInputOutputPanel
                     currentTheme={currentTheme}
@@ -468,9 +492,9 @@ export function CodeEditor({
           onClose={handleCloseContextMenu}
         >
           <button
-            className={`w-full px-4 py-1.5 text-sm text-left ${
+            className={`w-full px-4 py-1.5 text-sm text-left transition-colors ${
               theme === "light"
-                ? "text-gray-800 hover:bg-gray-100"
+                ? "text-gray-700 bg-white hover:bg-gray-50"
                 : "text-white hover:bg-zinc-700"
             }`}
             onClick={() => handleRenameTab(contextMenu.id)}
@@ -478,9 +502,9 @@ export function CodeEditor({
             Rename
           </button>
           <button
-            className={`w-full px-4 py-1.5 text-sm text-left ${
+            className={`w-full px-4 py-1.5 text-sm text-left transition-colors ${
               theme === "light"
-                ? "text-gray-800 hover:bg-gray-100"
+                ? "text-gray-700 bg-white hover:bg-gray-50"
                 : "text-white hover:bg-zinc-700"
             }`}
             onClick={downloadActiveFile}
