@@ -54,6 +54,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       await saveFileToIDB(updatedFile);
     }
   };
+
   const updateFileContent = async (id: string, newContent: string) => {
     const updatedFiles = files.map((file) =>
       file.id === id ? { ...file, content: newContent, isSynced: false } : file
@@ -460,9 +461,12 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
         isShared: true
       }, { merge: true });
 
+      // Sync the file with the cloud
+      await syncFileWithCloud(fileId);
+
       // Update local state
       const updatedFiles = files.map(f => 
-        f.id === fileId ? { ...f, isShared: true } : f
+        f.id === fileId ? { ...f, isShared: true, isSynced: true } : f
       );
       setFiles(updatedFiles);
 
@@ -558,6 +562,31 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     }
   };
 
+  const unshareFile = async (fileId: string): Promise<void> => {
+    try {
+      if (!user) throw new Error("User must be logged in to unshare files");
+
+      const fileToUnshare = files.find(f => f.id === fileId);
+      if (!fileToUnshare) throw new Error("File not found");
+
+      // Update file in userCodes with isShared flag
+      const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
+      await setDoc(fileRef, {
+        ...fileToUnshare,
+        isShared: false
+      }, { merge: true });
+
+      // Update local state
+      const updatedFiles = files.map(f => 
+        f.id === fileId ? { ...f, isShared: false } : f
+      );
+      setFiles(updatedFiles);
+    } catch (error) {
+      console.error("Error unsharing file:", error);
+      throw error;
+    }
+  };
+
   const activeFile = files.find((file) => file.id === activeFileId);
 
   return {
@@ -588,5 +617,6 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
     handleRenameFile,
     shareFile,
     accessSharedFile,
+    unshareFile,
   };
 }

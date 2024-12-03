@@ -9,7 +9,6 @@ import {
   FaExpand,
   FaBars,
   FaUser,
-  FaBook,
 } from "react-icons/fa";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
@@ -23,15 +22,15 @@ import Image from "next/image";
 
 // Update button styles with modern design
 const BUTTON_BASE =
-  "flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-md transition-all duration-200";
+  "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg transition-all duration-200";
 const BUTTON_ACTIVE = (theme: string) =>
   theme === "light"
-    ? "bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600 shadow-sm ring-1 ring-blue-200"
-    : "bg-gradient-to-r from-blue-900/30 to-blue-800/30 text-blue-400 shadow-inner ring-1 ring-blue-800";
+    ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 shadow-md ring-2 ring-blue-300"
+    : "bg-gradient-to-r from-blue-800 to-blue-900 text-blue-300 shadow-inner ring-2 ring-blue-700";
 const BUTTON_INACTIVE = (theme: string) =>
   theme === "light"
-    ? "hover:bg-gray-50 text-gray-600 hover:text-gray-900 hover:shadow-sm"
-    : "hover:bg-zinc-800/80 text-gray-400 hover:text-gray-200 hover:shadow-inner";
+    ? "hover:bg-gray-100 text-gray-700 hover:text-gray-900 hover:shadow-md"
+    : "hover:bg-zinc-700 text-gray-300 hover:text-gray-100 hover:shadow-inner";
 
 // Create reusable button component
 const HeaderButton = memo(
@@ -54,11 +53,11 @@ HeaderButton.displayName = "HeaderButton";
 // Add this new style constant
 const SELECT_STYLES = (theme: string) => `
   ${BUTTON_BASE} ${BUTTON_INACTIVE(theme)}
-  min-w-[120px] relative appearance-none pr-7 pl-2
+  min-w-[130px] relative appearance-none pr-8 pl-3
   ${
     theme === "light"
-      ? "bg-gradient-to-r from-gray-50 to-gray-100 ring-1 ring-gray-300 hover:from-gray-100 hover:to-gray-200"
-      : "bg-[#1e1e1e] ring-1 ring-zinc-800 hover:bg-[#252526]"
+      ? "bg-gradient-to-r from-gray-100 to-gray-200 ring-2 ring-gray-400 hover:from-gray-200 hover:to-gray-300"
+      : "bg-[#2a2a2a] ring-2 ring-zinc-700 hover:bg-[#333]"
   }
 `;
 
@@ -90,10 +89,10 @@ const getIconColor = (theme: string, currentLanguage: string) => {
 };
 
 interface EditorHeaderProps {
-  editorMode: "code" | "test" | "editor" | "exercise";
+  editorMode: "code" | "test" | "editor";
   isCompiling: boolean;
   executionTime: number | null;
-  onEditorModeChange: (mode: "code" | "test" | "editor" | "exercise") => void;
+  onEditorModeChange: (mode: "code" | "test" | "editor") => void;
   onCompileAndRun: () => void;
   onSubmit?: () => void;
   onLanguageChange: (language: string) => void;
@@ -101,7 +100,6 @@ interface EditorHeaderProps {
   isExplorerVisible: boolean;
   toggleExplorer: () => void;
   rightElements?: React.ReactNode;
-  onToggleExercise: () => void;
 }
 
 export const EditorHeader = memo(function EditorHeader({
@@ -113,7 +111,6 @@ export const EditorHeader = memo(function EditorHeader({
   onLanguageChange,
   currentLanguage,
   toggleExplorer,
-  onToggleExercise,
 }: EditorHeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useFirebaseAuth();
@@ -153,14 +150,14 @@ export const EditorHeader = memo(function EditorHeader({
   return (
     <div className="flex flex-col">
       <div
-        className={`flex items-center justify-between px-3 h-8 border-b ${
+        className={`flex items-center justify-between px-4 h-10 border-b ${
           theme === "light"
-            ? "bg-gradient-to-r from-white to-gray-50 border-gray-200"
-            : "bg-gradient-to-r from-[#1e1e1e] to-[#252526] border-[#2d2d2d]"
+            ? "bg-gradient-to-r from-white to-gray-100 border-gray-300"
+            : "bg-gradient-to-r from-[#2a2a2a] to-[#333] border-[#3a3a3a]"
         }`}
       >
         {/* Left section */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <HeaderButton
             onClick={toggleExplorer}
             className={`${BUTTON_INACTIVE(
@@ -169,12 +166,12 @@ export const EditorHeader = memo(function EditorHeader({
             title="Toggle Explorer"
           >
             <FaBars
-              className="w-3 h-3"
+              className="w-4 h-4"
               style={{ color: theme === "light" ? "#6366f1" : "#818cf8" }}
             />
           </HeaderButton>
 
-          <div className="h-4 w-[1px] mx-1 opacity-20 bg-current" />
+          <div className="h-5 w-[1px] mx-2 opacity-20 bg-current" />
 
           {/* Move language selector here */}
           <div className="relative flex items-center">
@@ -187,8 +184,8 @@ export const EditorHeader = memo(function EditorHeader({
                   theme === "light" ? "%23666" : "%23999"
                 }'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 6px center",
-                backgroundSize: "14px",
+                backgroundPosition: "right 8px center",
+                backgroundSize: "16px",
               }}
             >
               {Object.entries(LANGUAGE_CONFIGS).map(([lang, config]) => (
@@ -198,14 +195,14 @@ export const EditorHeader = memo(function EditorHeader({
                   className={
                     theme === "light"
                       ? "bg-white text-gray-800"
-                      : "bg-[#1e1e1e] text-gray-300"
+                      : "bg-[#2a2a2a] text-gray-300"
                   }
                 >
                   {config.displayName}
                 </option>
               ))}
             </select>
-            <span className="absolute right-6 top-1/2 transform -translate-y-1/2 pointer-events-none opacity-90">
+            <span className="absolute right-7 top-1/2 transform -translate-y-1/2 pointer-events-none opacity-90">
               <div style={{ color: getIconColor(theme, currentLanguage) }}>
                 {getLanguageIcon(currentLanguage)}
               </div>
@@ -214,7 +211,7 @@ export const EditorHeader = memo(function EditorHeader({
         </div>
 
         {/* Center section */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Move Run button here */}
           <HeaderButton
             onClick={handleRunClick}
@@ -224,30 +221,30 @@ export const EditorHeader = memo(function EditorHeader({
               isCompiling
                 ? "opacity-50 cursor-not-allowed"
                 : theme === "light"
-                ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-600 hover:from-emerald-100 hover:to-green-100 ring-1 ring-emerald-200"
-                : "bg-gradient-to-r from-emerald-900/20 to-green-900/20 text-emerald-400 hover:from-emerald-900/30 hover:to-green-900/30 ring-1 ring-emerald-800/30"
+                ? "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 hover:from-emerald-200 hover:to-green-200 ring-2 ring-emerald-300"
+                : "bg-gradient-to-r from-emerald-800 to-green-800 text-emerald-300 hover:from-emerald-900 hover:to-green-900 ring-2 ring-emerald-700"
             }`}
           >
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               {isCompiling ? (
                 <FaSpinner
-                  className="animate-spin w-3 h-3"
+                  className="animate-spin w-4 h-4"
                   style={{ color: theme === "light" ? "#059669" : "#34d399" }}
                 />
               ) : (
                 <>
                   <FaPlay
-                    className="w-2.5 h-2.5"
+                    className="w-3 h-3"
                     style={{ color: theme === "light" ? "#059669" : "#34d399" }}
                   />
                   <div className="flex items-center gap-1">
                     <span>Run</span>
                     {executionTime && (
                       <span
-                        className={`text-[9px] px-1 py-0.5 rounded-sm ${
+                        className={`text-[10px] px-1 py-0.5 rounded-sm ${
                           theme === "light"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-emerald-900/30 text-emerald-400"
+                            ? "bg-emerald-200 text-emerald-800"
+                            : "bg-emerald-900 text-emerald-400"
                         }`}
                       >
                         {executionTime}ms
@@ -260,8 +257,8 @@ export const EditorHeader = memo(function EditorHeader({
           </HeaderButton>
 
           <div
-            className={`flex items-center rounded-lg p-0.5 ${
-              theme === "light" ? "bg-gray-100" : "bg-zinc-800/50"
+            className={`flex items-center rounded-lg p-1 ${
+              theme === "light" ? "bg-gray-200" : "bg-zinc-700"
             }`}
           >
             {[
@@ -283,42 +280,36 @@ export const EditorHeader = memo(function EditorHeader({
                 label: "Full",
                 color: theme === "light" ? "#f59e0b" : "#fbbf24",
               },
-              {
-                mode: "exercise",
-                icon: FaBook,
-                label: "Exercise",
-                color: theme === "light" ? "#10b981" : "#6ee7b7",
-              },
             ].map(({ mode, icon: Icon, label, color }) => (
               <HeaderButton
                 key={mode}
                 onClick={() =>
-                  onEditorModeChange(mode as "code" | "test" | "editor" | "exercise")
+                  onEditorModeChange(mode as "code" | "test" | "editor")
                 }
-                className={`px-2 py-1 ${
+                className={`px-3 py-1.5 ${
                   editorMode === mode
                     ? BUTTON_ACTIVE(theme)
                     : BUTTON_INACTIVE(theme)
                 }`}
                 title={label}
               >
-                <Icon size={10} style={{ color }} />
+                <Icon size={12} style={{ color }} />
               </HeaderButton>
             ))}
           </div>
         </div>
 
         {/* Right section */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <HeaderButton
             onClick={toggleTheme}
             className={`${BUTTON_INACTIVE(theme)} hover:rotate-90 duration-300`}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
             {theme === "dark" ? (
-              <FaSun size={11} style={{ color: "#fbbf24" }} />
+              <FaSun size={12} style={{ color: "#fbbf24" }} />
             ) : (
-              <FaMoon size={11} style={{ color: "#6366f1" }} />
+              <FaMoon size={12} style={{ color: "#6366f1" }} />
             )}
           </HeaderButton>
 
@@ -327,19 +318,19 @@ export const EditorHeader = memo(function EditorHeader({
             onClick={handleUserIconClick}
             className={`${BUTTON_INACTIVE(
               theme
-            )} p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center`}
+            )} p-2 min-w-[36px] min-h-[36px] flex items-center justify-center`}
             title="User Account"
           >
             {user?.photoURL ? (
               <Image
                 src={user.photoURL}
                 alt="Profile"
-                width={24}
-                height={24}
-                className="rounded-full w-6 h-6 object-cover"
+                width={28}
+                height={28}
+                className="rounded-full w-7 h-7 object-cover"
               />
             ) : (
-              <FaUser size={14} />
+              <FaUser size={16} />
             )}
           </HeaderButton>
         </div>

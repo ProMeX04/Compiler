@@ -19,7 +19,6 @@ import { useCodeExecution } from "../hooks/useCodeExecution";
 import { FileExplorer } from "@/app/components/FileExplorer";
 import { addDuplicateLineCommand } from "../config/editor/monaco";
 import useTestingState from "@/app/hooks/useTestingState";
-import ExerciseDisplay from "./Editor/ExerciseDisplay";
 
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
@@ -86,6 +85,7 @@ export function CodeEditor({
     handleRenameFile,
     shareFile,
     accessSharedFile,
+    unshareFile, // Ensure this is included
   } = useFileManager({
     defaultContent,
     defaultFileName,
@@ -127,16 +127,11 @@ export function CodeEditor({
     column: 1,
   });
   const { currentTheme, theme } = useTheme();
-  const [editorMode, setEditorMode] = useState<"code" | "test" | "editor" | "exercise">(
+  const [editorMode, setEditorMode] = useState<"code" | "test" | "editor">(
     "editor"
   );
   const [isExplorerVisible, setIsExplorerVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isExerciseVisible, setIsExerciseVisible] = useState(false);
-
-  const onToggleExercise = () => {
-    setIsExerciseVisible((prev) => !prev);
-  };
 
   const {
     isCompiling,
@@ -390,7 +385,6 @@ export function CodeEditor({
           isExplorerVisible={isExplorerVisible}
           toggleExplorer={() => setIsExplorerVisible(!isExplorerVisible)}
           rightElements={undefined}
-          onToggleExercise={onToggleExercise}
         />
       </div>
       <div className="flex-1 flex overflow-hidden">
@@ -420,6 +414,7 @@ export function CodeEditor({
                   syncFileWithCloud={syncFileWithCloud}
                   pullFileFromCloud={pullFileFromCloud}
                   shareFile={shareFile}
+                  unshareFile={unshareFile}
                 />
               </Panel>
               <PanelResizeHandle
@@ -432,8 +427,7 @@ export function CodeEditor({
           
           {editorPanel}
 
-          {/* Thay đổi phần này để xử lý exercise mode */}
-          {(editorMode === "test" || editorMode === "code" || editorMode === "exercise") && (
+          {(editorMode === "test" || editorMode === "code") && (
             <>
               <PanelResizeHandle />
               <Panel id="output-panel" order={3} defaultSize={25} minSize={5}>
@@ -444,8 +438,6 @@ export function CodeEditor({
                     onAddTestCase={addTestCase}
                     onRemoveTestCase={removeTestCase}
                   />
-                ) : editorMode === "exercise" ? (
-                  <ExerciseDisplay />
                 ) : (
                   <MemoizedInputOutputPanel
                     currentTheme={currentTheme}

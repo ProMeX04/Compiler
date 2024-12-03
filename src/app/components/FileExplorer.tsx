@@ -37,6 +37,7 @@ export interface FileExplorerProps {
   syncFileWithCloud: (id: string) => void;
   pullFileFromCloud: (id: string) => void;
   shareFile: (id: string) => Promise<string>;
+  unshareFile: (id: string) => Promise<void>;
 }
 
 export const FileExplorer = React.memo(function FileExplorer({
@@ -55,6 +56,7 @@ export const FileExplorer = React.memo(function FileExplorer({
   syncFileWithCloud,
   pullFileFromCloud,  
   shareFile,
+  unshareFile, // Ensure this is included
 }: FileExplorerProps) {
   const { theme } = useTheme();
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
@@ -116,13 +118,23 @@ export const FileExplorer = React.memo(function FileExplorer({
   const handleShareFile = async (id: string) => {
     try {
       const link = await shareFile(id);
-      setShareLink(link);
+      navigator.clipboard.writeText(link); // Automatically copy to clipboard
+      setShareLink("Copied"); // Set shareLink to "Copied"
       handleContextMenuClose();
     } catch (error) {
       // Show user-friendly error message
       const errorMessage = error instanceof Error ? error.message : "Failed to share file";
       // You might want to add a toast notification system here
       console.error("Error sharing file:", errorMessage);
+    }
+  };
+
+  const handleUnshareFile = async (id: string) => {
+    try {
+      await unshareFile(id);
+      handleContextMenuClose();
+    } catch (error) {
+      console.error("Error unsharing file:", error);
     }
   };
 
@@ -134,6 +146,13 @@ export const FileExplorer = React.memo(function FileExplorer({
     window.addEventListener('click', handleWindowClick);
     return () => window.removeEventListener('click', handleWindowClick);
   }, []);
+
+  useEffect(() => {
+    if (shareLink === "Copied") {
+      const timer = setTimeout(() => setShareLink(null), 2000); // Clear "Copied" message after 2 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [shareLink]);
 
   const fuseOptions = {
     keys: ['name'],
@@ -403,20 +422,37 @@ export const FileExplorer = React.memo(function FileExplorer({
                 <span>Download</span>
               </div>
             </button>
-            <button
-              className={`w-full px-4 py-2 text-sm text-left transition-colors
-                ${
-                  theme === "light"
-                    ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                    : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
-                }`}
-              onClick={() => handleShareFile(contextMenu.id)}
-            >
-              <div className="flex items-center gap-3">
-                <FaShareAlt size={12} />
-                <span>{files.find(f => f.id === contextMenu.id)?.isShared ? 'Shared' : 'Share'}</span>
-              </div>
-            </button>
+            {files.find(f => f.id === contextMenu.id)?.isShared ? (
+              <button
+                className={`w-full px-4 py-2 text-sm text-left transition-colors
+                  ${
+                    theme === "light"
+                      ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                      : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
+                  }`}
+                onClick={() => handleUnshareFile(contextMenu.id)}
+              >
+                <div className="flex items-center gap-3">
+                  <FaShareAlt size={12} />
+                  <span>Unshare</span>
+                </div>
+              </button>
+            ) : (
+              <button
+                className={`w-full px-4 py-2 text-sm text-left transition-colors
+                  ${
+                    theme === "light"
+                      ? "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                      : "text-gray-200 hover:bg-blue-900/20 hover:text-blue-400"
+                  }`}
+                onClick={() => handleShareFile(contextMenu.id)}
+              >
+                <div className="flex items-center gap-3">
+                  <FaShareAlt size={12} />
+                  <span>Share</span>
+                </div>
+              </button>
+            )}
             <button
               className={`w-full px-4 py-2 text-sm text-left transition-colors
                 ${
@@ -438,36 +474,20 @@ export const FileExplorer = React.memo(function FileExplorer({
         </ContextMenu>
       )}
 
-      {shareLink && (
+      {shareLink === "Copied" && (
         <div className={`fixed bottom-4 left-4 p-4 rounded-lg shadow-lg ${
           theme === "light" 
             ? "bg-white border border-gray-200" 
             : "bg-[#2d2d2d] border border-zinc-700"
         }`}>
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
-              value={shareLink}
-              className={`flex-1 px-2 py-1.5 rounded text-sm outline-none ${
-                theme === "light"
-                  ? "bg-gray-50 border border-gray-200 text-gray-800"
-                  : "bg-[#1e1e1e] border border-zinc-700 text-gray-200"
-              }`}
-            />
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(shareLink);
-                setShareLink(null);
-              }}
-              className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                theme === "light"
-                  ? "bg-blue-500 hover:bg-blue-600 text-white"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-              }`}
-            >
-              Copy
-            </button>
+            <span className={`flex-1 px-2 py-1.5 rounded text-sm outline-none ${
+              theme === "light"
+                ? "bg-gray-50 border border-gray-200 text-gray-800"
+                : "bg-[#1e1e1e] border border-zinc-700 text-gray-200"
+            }`}>
+              Copied to clipboard
+            </span>
           </div>
         </div>
       )}
