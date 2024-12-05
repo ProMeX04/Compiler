@@ -53,7 +53,7 @@ export function LoginModal({ isOpen, onClose, position }: LoginModalProps) {
       onClick={onClose}
     >
       <div
-        className="absolute bg-white dark:bg-zinc-800 rounded-lg shadow-2xl overflow-hidden w-64"
+        className="absolute bg-white dark:bg-zinc-800 rounded-lg shadow-2xl overflow-hidden w-[320px]"
         style={{
           top: adjustedPosition.top,
           left: adjustedPosition.left,
@@ -95,13 +95,58 @@ export function LoginModal({ isOpen, onClose, position }: LoginModalProps) {
             </div>
           </div>
         ) : (
-          <div className="p-4">
+          <div className="p-6">
+            <div className="mb-6">
+              <h3 className="text-base font-semibold mb-4 text-gray-800 dark:text-white">
+                Đăng nhập để trải nghiệm thêm
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300">Cloud Sync</h4>
+                    <p className="text-xs text-blue-600/80 dark:text-blue-400/80">Tự động lưu và đồng bộ code</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30">
+                  <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-green-700 dark:text-green-300">Multi-device</h4>
+                    <p className="text-xs text-green-600/80 dark:text-green-400/80">Truy cập từ mọi thiết bị</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30">
+                  <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300">Collaboration</h4>
+                    <p className="text-xs text-purple-600/80 dark:text-purple-400/80">Chia sẻ và làm việc nhóm</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-2 bg-white dark:bg-zinc-700 border dark:border-zinc-600 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-600 transition-colors"
+              className="w-full flex items-center justify-center gap-3 bg-white dark:bg-zinc-700/50 border dark:border-zinc-600 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors group"
             >
-              <FcGoogle size={18} />
-              <span className="text-sm">Continue with Google</span>
+              <FcGoogle size={20} />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">
+                Tiếp tục với Google
+              </span>
             </button>
           </div>
         )}

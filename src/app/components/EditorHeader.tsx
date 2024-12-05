@@ -1,16 +1,19 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useState } from "react";
+import { toast } from 'react-hot-toast'; // Sửa import
 import {
   FaSun,
   FaMoon,
-  FaCode,
-  FaFlask,
   FaPlay,
   FaSpinner,
   FaExpand,
   FaBars,
   FaUser,
+  FaVial,
+  FaCog,
+  FaBug,
+  FaMagic,
+  FaPaperPlane,
 } from "react-icons/fa";
-import { FaWandSparkles } from 'react-icons/fa6';  // Add this import
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
   LANGUAGE_CONFIGS,
@@ -18,7 +21,7 @@ import {
 } from "@/app/config/languagesConfig/categories";
 import { useFirebaseAuth } from "@/app/hooks/useFirebaseAuth";
 import { LoginModal } from "@/app/components/LoginModal";
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import Image from "next/image";
 
 const BUTTON_BASE =
@@ -97,6 +100,13 @@ interface EditorHeaderProps {
   isExplorerVisible: boolean;
   toggleExplorer: () => void;
   onFormatCode: () => Promise<void>;
+  onAnalyzeCode: () => Promise<void>;
+  isAnalyzing: boolean;
+  isRunningCode: boolean;
+  currentContent: string;
+  onContentChange: (content: string) => void;
+  onChat: (message: string) => Promise<void>;
+  isChatting: boolean;
 }
 
 export const EditorHeader = memo(function EditorHeader({
@@ -109,7 +119,14 @@ export const EditorHeader = memo(function EditorHeader({
   currentLanguage,
   toggleExplorer,
   onFormatCode,
-}: EditorHeaderProps) {
+  isFormatting,
+  onAnalyzeCode,
+  isAnalyzing,
+  isRunningCode,
+  onChat,
+}: EditorHeaderProps & { 
+  isFormatting: boolean,
+}) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useFirebaseAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -118,6 +135,8 @@ export const EditorHeader = memo(function EditorHeader({
     left: 0,
   });
   const loginButtonRef = useRef<HTMLButtonElement>(null);
+  const [message, setMessage] = useState('');
+  const [isAskingAI, setIsAskingAI] = useState(false);
 
   const handleRunClick = useCallback(() => {
     if (editorMode === "editor") {
@@ -135,6 +154,23 @@ export const EditorHeader = memo(function EditorHeader({
       });
     }
     setIsLoginModalOpen(true);
+  };
+
+  const handleAskAI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim() || isAskingAI) return;
+
+    setIsAskingAI(true);
+    try {
+      // Sử dụng onChat callback được truyền từ props
+      await onChat(message);
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast.error('Failed to get AI response');
+    } finally {
+      setIsAskingAI(false);
+      setMessage('');
+    }
   };
 
   useEffect(() => {
@@ -204,33 +240,56 @@ export const EditorHeader = memo(function EditorHeader({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Add format button before Run button */}
+          {/* Analyze button - use debug icon */}
+          <HeaderButton
+            onClick={onAnalyzeCode}
+            disabled={isCompiling || isAnalyzing}
+            title="Analyze Code (Alt+Shift+A)"
+            className={`${BUTTON_INACTIVE(theme)}`}
+          >
+            {isAnalyzing ? (
+              <FaSpinner className="animate-spin w-3 h-3" />
+            ) : (
+              <FaBug
+                className="w-3 h-3"
+                style={{ color: theme === "light" ? "#ec4899" : "#f472b6" }}
+              />
+            )}
+          </HeaderButton>
+
+          {/* Format button - use magic wand icon */}
           <HeaderButton
             onClick={onFormatCode}
-            disabled={isCompiling}
+            disabled={isCompiling || isFormatting} // Disable when formatting
             title="Format Code (Alt+Shift+F)"
             className={`${BUTTON_INACTIVE(theme)}`}
           >
-            <FaWandSparkles 
-              className="w-3 h-3"
-              style={{ color: theme === "light" ? "#8b5cf6" : "#a78bfa" }}
-            />
+            {isFormatting ? (
+              <FaSpinner className="animate-spin w-3 h-3" />
+            ) : (
+              <FaMagic
+                className="w-3 h-3"
+                style={{ color: theme === "light" ? "#8b5cf6" : "#a78bfa" }}
+              />
+            )}
           </HeaderButton>
 
           <HeaderButton
             onClick={handleRunClick}
-            disabled={isCompiling}
+            disabled={isCompiling || isRunningCode}
             title="Run Code (Ctrl+B)"
             className={`${
-              isCompiling
+              isCompiling || isRunningCode
                 ? "opacity-50 cursor-not-allowed"
                 : theme === "light"
                 ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-600 hover:from-emerald-100 hover:to-green-100 ring-1 ring-emerald-200"
                 : "bg-gradient-to-r from-emerald-900/20 to-green-900/20 text-emerald-400 hover:from-emerald-900/30 hover:to-green-900/30 ring-1 ring-emerald-800/30"
+            } transition-all duration-200 transform ${
+              isRunningCode ? "scale-95" : ""
             }`}
           >
             <div className="flex items-center gap-1.5">
-              {isCompiling ? (
+              {isCompiling || isRunningCode ? (
                 <FaSpinner
                   className="animate-spin w-3 h-3"
                   style={{ color: theme === "light" ? "#059669" : "#34d399" }}
@@ -238,7 +297,9 @@ export const EditorHeader = memo(function EditorHeader({
               ) : (
                 <>
                   <FaPlay
-                    className="w-2.5 h-2.5"
+                    className={`w-2.5 h-2.5 transition-transform duration-200 ${
+                      isRunningCode ? "scale-90" : ""
+                    }`}
                     style={{ color: theme === "light" ? "#059669" : "#34d399" }}
                   />
                   <div className="flex items-center gap-1">
@@ -268,13 +329,13 @@ export const EditorHeader = memo(function EditorHeader({
             {[
               {
                 mode: "code",
-                icon: FaCode,
+                icon: FaCog, // Thay đổi sang icon cấu hình
                 label: "Code",
                 color: theme === "light" ? "#3b82f6" : "#60a5fa",
               },
               {
                 mode: "test",
-                icon: FaFlask,
+                icon: FaVial, // Thay đổi sang icon test tube
                 label: "Test",
                 color: theme === "light" ? "#8b5cf6" : "#a78bfa",
               },
@@ -305,6 +366,33 @@ export const EditorHeader = memo(function EditorHeader({
 
         {/* Right section */}
         <div className="flex items-center gap-2">
+          <form onSubmit={handleAskAI} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Ask AI about code..."
+              className={`w-64 p-1 text-xs rounded-md ${
+                theme === 'light' 
+                  ? 'bg-gray-50 border border-gray-200' 
+                  : 'bg-zinc-800 border border-zinc-700'
+              }`}
+              disabled={isAskingAI}
+            />
+            <button
+              type="submit"
+              disabled={isAskingAI}
+              className={`p-1 rounded-md ${BUTTON_INACTIVE(theme)}`}
+              title="Ask AI"
+            >
+              {isAskingAI ? (
+                <FaSpinner className="w-3 h-3 animate-spin" />
+              ) : (
+                <FaPaperPlane className="w-3 h-3" />
+              )}
+            </button>
+          </form>
+          
           <HeaderButton
             onClick={toggleTheme}
             className={`${BUTTON_INACTIVE(theme)} hover:rotate-90 duration-300`}
@@ -322,7 +410,7 @@ export const EditorHeader = memo(function EditorHeader({
             onClick={handleUserIconClick}
             className={`${BUTTON_INACTIVE(
               theme
-            )} p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center`}
+            )} p-1.5 flex items-center justify-center gap-1.5`}
             title="User Account"
           >
             {user?.photoURL ? (
@@ -334,11 +422,15 @@ export const EditorHeader = memo(function EditorHeader({
                 className="rounded-full w-6 h-6 object-cover"
               />
             ) : (
-              <FaUser size={14} />
+              <>
+                <FaUser size={14} />
+                {!user && <span className="text-xs">Login</span>}
+              </>
             )}
           </HeaderButton>
         </div>
       </div>
+
 
       <LoginModal
         isOpen={isLoginModalOpen}

@@ -6,11 +6,28 @@ export const executeCode = async (params: PistonExecuteRequest): Promise<PistonE
   const response = await fetch(`${PISTON_API}/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      language: params.language,
+      version: params.version,
+      files: [
+        {
+          name: 'main',
+          content: params.files[0].content,
+        }
+      ],
+      stdin: params.stdin,
+      // Add these optional parameters
+      args: [],
+      compile_timeout: 10000,
+      run_timeout: 10000,
+      compile_memory_limit: -1,
+      run_memory_limit: -1,
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP error: ${response.status}`);
+    const errorData = await response.text();
+    throw new Error(`Execution failed: ${errorData}`);
   }
 
   const result = await response.json();

@@ -203,6 +203,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
         content: fileToSync.content,
         language: fileToSync.language,
         active: true,
+        isShared: fileToSync.isShared || false, // Preserve isShared status
       });
 
       const updatedFiles = files.map((f) =>
@@ -331,6 +332,7 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
           content: file.content,
           language: file.language,
           active: true,
+          isShared: file.isShared || false, // Preserve isShared status
         });
       }
 
@@ -454,22 +456,32 @@ export function useFileManager({ templateCodes = {} }: UseFileManagerProps) {
       const fileToShare = files.find(f => f.id === fileId);
       if (!fileToShare) throw new Error("File not found");
 
-      // Update file in userCodes with isShared flag
+      // First save to cloud before sharing
       const fileRef = doc(db, "userCodes", user.uid, "files", fileId);
       await setDoc(fileRef, {
-        ...fileToShare,
-        isShared: true
-      }, { merge: true });
+        name: fileToShare.name,
+        content: fileToShare.content, 
+        language: fileToShare.language,
+        isShared: true,
+        active: true
+      });
 
       // Update local state
       const updatedFiles = files.map(f => 
-        f.id === fileId ? { ...f, isShared: true } : f
+        f.id === fileId ? { ...f, isShared: true, isSynced: true } : f
       );
       setFiles(updatedFiles);
 
-      // Generate share link with userId/fileId
+      // Save updated state to IndexedDB
+      const updatedFile = updatedFiles.find(f => f.id === fileId);
+      if (updatedFile) {
+        await saveFileToIDB(updatedFile);
+      }
+
+      // Generate share link
       const shareCode = btoa(`${user.uid}/${fileId}`);
       return `${window.location.origin}?shareCode=${shareCode}`;
+
     } catch (error) {
       console.error("Error sharing file:", error);
       throw error;

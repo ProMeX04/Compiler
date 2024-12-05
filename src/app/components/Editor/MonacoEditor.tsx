@@ -19,6 +19,8 @@ interface MonacoEditorProps {
   theme: string;
   options?: Monaco.editor.IStandaloneEditorConstructionOptions;
   height?: string | number;
+  onFormatCode?: () => Promise<void>;  // Make optional
+  onAnalyzeCode?: () => Promise<void>;  // Make optional
 }
 
 let suggestionsRegistered = false;
@@ -32,6 +34,8 @@ export function MonacoEditor({
   theme,
   options = {},
   height = "100%",
+  onFormatCode,
+  onAnalyzeCode,
 }: MonacoEditorProps) {
   const handleEditorDidMount = useCallback(
     async (
@@ -40,6 +44,31 @@ export function MonacoEditor({
     ) => {
       if (onMount) {
         onMount(editor, monaco);
+      }
+
+      // Only add context menu items if callbacks are provided
+      if (onFormatCode) {
+        editor.addAction({
+          id: 'format-code',
+          label: 'Format Code',
+          keybindings: [
+            monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF
+          ],
+          contextMenuGroupId: 'modification',
+          run: onFormatCode
+        });
+      }
+
+      if (onAnalyzeCode) {
+        editor.addAction({
+          id: 'analyze-code',
+          label: 'Analyze Code',
+          keybindings: [
+            monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyA
+          ],
+          contextMenuGroupId: 'modification',
+          run: onAnalyzeCode
+        });
       }
 
       addMouseWheelZoom(editor);
@@ -51,7 +80,7 @@ export function MonacoEditor({
         suggestionsRegistered = true;
       }
     },
-    [onMount]
+    [onMount, onFormatCode, onAnalyzeCode]
   );
 
   return (

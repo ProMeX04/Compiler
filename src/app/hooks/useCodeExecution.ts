@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { executeCode } from '../services/piston';
 import { TestCase } from '../types/types';
-
 export function useCodeExecution() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [executionTime, setExecutionTime] = useState<number | null>(null);
+  const [isRunningCode, setIsRunningCode] = useState(false);
 
   const executeCodeWithMetrics = async (
-    language: string,
-    version: string,
     content: string,
-    stdin: string
+    stdin: string,
+    language: string,
+    version: string
   ) => {
+    setIsRunningCode(true);
     const startTime = performance.now();
 
     try {
@@ -37,10 +38,14 @@ export function useCodeExecution() {
         executionTime: Math.round(performance.now() - startTime)
       };
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Code execution error:', errorMessage);
       return {
-        output: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        output: `Error: ${errorMessage}`,
         executionTime: Math.round(performance.now() - startTime)
       };
+    } finally {
+      setTimeout(() => setIsRunningCode(false), 1);
     }
   };
 
@@ -48,27 +53,42 @@ export function useCodeExecution() {
     language: string,
     version: string,
     content: string,
-    testCases: TestCase[]
+    testCases: TestCase[],
+    onTestComplete?: (updatedTestCases: TestCase[]) => void
   ): Promise<TestCase[]> => {
     setIsCompiling(true);
+    const results: TestCase[] = [...testCases];
+
     try {
-      const results = await Promise.all(
-        testCases.map(async (testCase) => {
-          const execResult = await executeCodeWithMetrics(
-            language,
-            version,
-            content,
-            testCase.input
-          );
-          return {
-            ...testCase,
-            actualOutput: execResult.output,
-            passed: !execResult.output.includes('Error') && 
-                    execResult.output.trim() === testCase.expectedOutput.trim()
-          };
-        })
-      );
+      for (let i = 0; i < testCases.length; i++) {
+        const { output } = await executeCodeWithMetrics(
+          content,
+          testCases[i].input,
+          language,
+          version
+        );
+
+        results[i] = {
+          ...testCases[i],
+          actualOutput: output,
+          passed: !output.includes('Error') && 
+                  output.trim() === testCases[i].expectedOutput.trim()
+        };
+
+        // Update progress after each test
+        if (onTestComplete) {
+          onTestComplete([...results]);
+        }
+      }
+
       return results;
+    } catch (error) {
+      console.error('Test execution error:', error);
+      return testCases.map(test => ({
+        ...test,
+        actualOutput: 'Error executing test',
+        passed: false
+      }));
     } finally {
       setIsCompiling(false);
     }
@@ -80,6 +100,7 @@ export function useCodeExecution() {
     executionTime,
     setExecutionTime,
     executeCodeWithMetrics,
-    runTests
+    runTests,
+    isRunningCode
   };
 }
