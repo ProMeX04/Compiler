@@ -2,8 +2,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { EditorHeader } from "@/app/components/EditorHeader";
-import { TestPanel } from "@/app/components/Editor/TestPanel";
-import { ContextMenu } from "@/app/components/ContextMenu";
+import { TestPanel } from "@/app/components/EditorMode/TestPanel";
 import { CursorPosition, TestCase } from "@/app/types/types";
 import "@szhsin/react-menu/dist/index.css";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
@@ -12,17 +11,40 @@ import { useFileManager } from "@/app/hooks/useFileManager";
 import { usePistonRuntimes } from "@/app/hooks/usePistonRuntimes";
 import { saveFileToIDB } from "@/app/utils/idb";
 import { defaultMainEditorOptions } from "@/app/config/editor/monaco";
-import WelcomeGuide from "@/app/components/Editor/WelcomeGuide";
+import WelcomeGuide from "@/app/components/WelcomeGuide";
 import { PanelResizeHandle } from "react-resizable-panels";
-import { MonacoEditor, InputOutputPanel } from "./Editor";
+import { MonacoEditor, InputOutputPanel } from "./EditorMode";
 import { useCodeExecution } from "../hooks/useCodeExecution";
-import { FileExplorer } from "@/app/components/FileExplorer";
+import { FileExplorer } from "@/app/components/FileExplorer/FileExplorer";
 import { addDuplicateLineCommand } from "../config/editor/monaco";
 import useTestingState from "@/app/hooks/useTestingState";
-import { toast } from 'react-hot-toast';
+import { toast } from "react-hot-toast";
+import { create } from 'zustand';
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
 const MemoizedInputOutputPanel = React.memo(InputOutputPanel);
+
+interface StoreState {
+  shareCode: string | null;
+  setShareCode: (code: string | null) => void;
+  isFormatting: boolean;
+  setIsFormatting: (isFormatting: boolean) => void;
+  isAnalyzing: boolean;
+  setIsAnalyzing: (isAnalyzing: boolean) => void;
+  isChatting: boolean;
+  setIsChatting: (isChatting: boolean) => void;
+}
+
+const useStore = create<StoreState>((set) => ({
+  shareCode: null,
+  setShareCode: (code) => set({ shareCode: code }),
+  isFormatting: false,
+  setIsFormatting: (isFormatting) => set({ isFormatting }),
+  isAnalyzing: false,
+  setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
+  isChatting: false,
+  setIsChatting: (isChatting) => set({ isChatting }),
+}));
 
 export interface CodeEditorProps {
   defaultContent?: string;
@@ -39,11 +61,11 @@ export interface CodeEditorProps {
 
 function useMounted() {
   const [mounted, setMounted] = useState(false);
-  
+
   useEffect(() => {
     setMounted(true);
   }, []);
-  
+
   return mounted;
 }
 
@@ -56,16 +78,13 @@ export function CodeEditor({
   onSubmit,
 }: CodeEditorProps) {
   const isMounted = useMounted();
-  const [shareCode, setShareCode] = useState<string | null>(null);
-  const [isFormatting, setIsFormatting] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isChatting, setIsChatting] = useState(false);
-  
+  const { shareCode, setShareCode, isFormatting, setIsFormatting, isAnalyzing, setIsAnalyzing, isChatting, setIsChatting } = useStore();
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('shareCode');
+    const code = params.get("shareCode");
     setShareCode(code);
-  }, []);
+  }, [setShareCode]);
 
   const {
     files,
@@ -73,7 +92,6 @@ export function CodeEditor({
     activeFileId,
     activeFile,
     setActiveFileId,
-    setRenamingFileId,
     addFile,
     isSyncing,
     removeFile,
@@ -112,16 +130,16 @@ export function CodeEditor({
   }, [shareCode]);
 
   const { getLatestVersion } = usePistonRuntimes();
-  const { 
-    input, 
-    output, 
-    testCases, 
-    setInput, 
-    setOutput, 
-    setTestCases, 
-    handleTestCaseChange, 
-    addTestCase, 
-    removeTestCase 
+  const {
+    input,
+    output,
+    testCases,
+    setInput,
+    setOutput,
+    setTestCases,
+    handleTestCaseChange,
+    addTestCase,
+    removeTestCase,
   } = useTestingState(initialTestCases);
   const [, setCursorPosition] = useState<CursorPosition>({
     line: 1,
@@ -141,14 +159,8 @@ export function CodeEditor({
     setExecutionTime,
     executeCodeWithMetrics,
     runTests,
-    isRunningCode
+    isRunningCode,
   } = useCodeExecution();
-
-  const [contextMenu, setContextMenu] = useState<{
-    id: string;
-    x: number;
-    y: number;
-  } | null>(null);
 
   const compileAndRun = useCallback(async () => {
     if (!activeFile) return;
@@ -157,16 +169,16 @@ export function CodeEditor({
     if (!version) return;
 
     try {
-      const { executionTime: time, output: result } = await executeCodeWithMetrics(
-        activeFile.content,
-        input,
-        activeFile.language,
-        version
-      );
+      const { executionTime: time, output: result } =
+        await executeCodeWithMetrics(
+          activeFile.content,
+          input,
+          activeFile.language,
+          version
+        );
 
       setOutput(result);
       setExecutionTime(time);
-      
     } catch (error) {
       setOutput(error instanceof Error ? error.message : "An error occurred");
     }
@@ -176,7 +188,7 @@ export function CodeEditor({
     executeCodeWithMetrics,
     getLatestVersion,
     setOutput,
-    setExecutionTime
+    setExecutionTime,
   ]);
 
   const handleRunTests = useCallback(async () => {
@@ -192,13 +204,12 @@ export function CodeEditor({
         activeFile.content,
         testCases,
         (updatedTests) => {
-          // Update test cases after each individual test completes
           setTestCases(updatedTests);
         }
       );
     } catch (error) {
-      console.error('Error running tests:', error);
-      toast.error('Failed to run tests');
+      console.error("Error running tests:", error);
+      toast.error("Failed to run tests");
     }
   }, [activeFile, getLatestVersion, runTests, testCases, setTestCases]);
 
@@ -206,7 +217,7 @@ export function CodeEditor({
     if (editorMode === "editor") {
       setEditorMode("code");
     }
-    
+
     if (editorMode === "test") {
       await handleRunTests();
     } else {
@@ -218,23 +229,8 @@ export function CodeEditor({
     if (!activeFile) return;
     try {
       await syncFileWithCloud(activeFile.id);
-    } catch{
-    }
+    } catch {}
   }, [activeFile, syncFileWithCloud]);
-
-  const downloadActiveFile = useCallback(() => {
-    if (!activeFile) return;
-
-    const blob = new Blob([activeFile.content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = activeFile.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [activeFile]);
 
   const handleTabContentChange = useCallback(
     async (fileId: string, newContent: string) => {
@@ -260,10 +256,10 @@ export function CodeEditor({
 
     setIsFormatting(true);
     try {
-      const response = await fetch('/api/gemini/format', {
-        method: 'POST',
+      const response = await fetch("/api/gemini/format", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           code: activeFile.content,
@@ -271,30 +267,30 @@ export function CodeEditor({
         }),
       });
 
-      if (!response.ok) throw new Error('Format request failed');
-      
+      if (!response.ok) throw new Error("Format request failed");
+
       const { formattedCode } = await response.json();
       if (formattedCode && activeFileId) {
         await handleTabContentChange(activeFileId, formattedCode);
-        toast.success('Code formatted successfully');
+        toast.success("Code formatted successfully");
       }
     } catch (error) {
-      console.error('Error formatting code:', error);
-      toast.error('Failed to format code');
+      console.error("Error formatting code:", error);
+      toast.error("Failed to format code");
     } finally {
       setIsFormatting(false);
     }
-  }, [activeFile, activeFileId, handleTabContentChange]);
+  }, [activeFile, activeFileId, handleTabContentChange, setIsFormatting]);
 
   const analyzeCode = useCallback(async () => {
     if (!activeFile) return;
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch('/api/gemini/analyze', {
-        method: 'POST',
+      const response = await fetch("/api/gemini/analyze", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           code: activeFile.content,
@@ -302,76 +298,78 @@ export function CodeEditor({
         }),
       });
 
-      if (!response.ok) throw new Error('Analyze request failed');
-      
+      if (!response.ok) throw new Error("Analyze request failed");
+
       const { formattedCode } = await response.json();
       if (formattedCode && activeFileId) {
         await handleTabContentChange(activeFileId, formattedCode);
-        toast.success('Code analyzed successfully');
+        toast.success("Code analyzed successfully");
       }
     } catch (error) {
-      console.error('Error analyzing code:', error);
-      toast.error('Failed to analyze code');
+      console.error("Error analyzing code:", error);
+      toast.error("Failed to analyze code");
     } finally {
       setIsAnalyzing(false);
     }
-  }, [activeFile, activeFileId, handleTabContentChange]);
+  }, [activeFile, activeFileId, handleTabContentChange, setIsAnalyzing]);
 
-  const handleChat = useCallback(async (message: string) => {
-    if (!activeFile) return;
-  
-    setIsChatting(true);
-    try {
-      const response = await fetch('/api/gemini/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code: activeFile.content,
-          language: activeFile.language,
-          message
-        }),
-      });
-  
-      if (!response.ok) throw new Error('Chat request failed');
-      
-      const { formattedCode } = await response.json();
-      console.log('Current content:', activeFile.content); // Debug log
-      console.log('New content:', formattedCode); // Debug log
-      
-      if (formattedCode && activeFileId) {
-        // Cập nhật files array trước
-        const updatedFiles = files.map(file => 
-          file.id === activeFileId 
-            ? { ...file, content: formattedCode, isSynced: false }
-            : file
-        );
-        setFiles(updatedFiles);
-        
-        // Sau đó cập nhật IDB
-        await saveFileToIDB(updatedFiles.find(f => f.id === activeFileId)!);
-        
-        toast.success('Code updated with AI comments');
-      } else {
-        toast.error('No changes were made to the code');
+  const handleChat = useCallback(
+    async (message: string) => {
+      if (!activeFile) return;
+
+      setIsChatting(true);
+      try {
+        const response = await fetch("/api/gemini/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code: activeFile.content,
+            language: activeFile.language,
+            message,
+          }),
+        });
+
+        if (!response.ok) throw new Error("Chat request failed");
+
+        const { formattedCode } = await response.json();
+        console.log("Current content:", activeFile.content); // Debug log
+        console.log("New content:", formattedCode); // Debug log
+
+        if (formattedCode && activeFileId) {
+          // Cập nhật files array trước
+          const updatedFiles = files.map((file) =>
+            file.id === activeFileId
+              ? { ...file, content: formattedCode, isSynced: false }
+              : file
+          );
+          setFiles(updatedFiles);
+
+          // Sau đó cập nhật IDB
+          await saveFileToIDB(updatedFiles.find((f) => f.id === activeFileId)!);
+
+          toast.success("Code updated with AI comments");
+        } else {
+          toast.error("No changes were made to the code");
+        }
+      } catch (error) {
+        console.error("Error in chat:", error);
+        toast.error("Failed to get AI response");
+      } finally {
+        setIsChatting(false);
       }
-    } catch (error) {
-      console.error('Error in chat:', error);
-      toast.error('Failed to get AI response');
-    } finally {
-      setIsChatting(false);
-    }
-  }, [activeFile, activeFileId, files, setFiles]);
-  
+    },
+    [activeFile, activeFileId, files, setFiles, setIsChatting]
+  );
 
   const handleKeyDown = useCallback(
     async (e: KeyboardEvent) => {
-      if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
         analyzeCode();
       }
-      if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
         formatCode();
       }
@@ -401,15 +399,6 @@ export function CodeEditor({
       setEditorMode("editor");
     }
   }, [activeFile]);
-
-  const handleCloseContextMenu = () => {
-    setContextMenu(null);
-  };
-
-  const handleRenameTab = (id: string) => {
-    setRenamingFileId(id);
-    handleCloseContextMenu();
-  };
 
   const handleEditorMount = useCallback(
     (editor: Monaco.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
@@ -471,11 +460,14 @@ export function CodeEditor({
   );
 
   // Add new handler for code changes
-  const handleCodeChange = useCallback((newCode: string) => {
-    if (activeFileId) {
-      handleTabContentChange(activeFileId, newCode);
-    }
-  }, [activeFileId, handleTabContentChange]);
+  const handleCodeChange = useCallback(
+    (newCode: string) => {
+      if (activeFileId) {
+        handleTabContentChange(activeFileId, newCode);
+      }
+    },
+    [activeFileId, handleTabContentChange]
+  );
 
   const editorPanel = useMemo(
     () => (
@@ -544,8 +536,8 @@ export function CodeEditor({
           onAnalyzeCode={analyzeCode}
           isAnalyzing={isAnalyzing}
           isRunningCode={isRunningCode}
-          currentContent={activeFile?.content || ''}
-          onContentChange={handleCodeChange}  // Add this prop
+          currentContent={activeFile?.content || ""}
+          onContentChange={handleCodeChange} // Add this prop
           onChat={handleChat}
           isChatting={isChatting}
         />
@@ -587,7 +579,7 @@ export function CodeEditor({
               />
             </>
           )}
-          
+
           {editorPanel}
 
           {(editorMode === "test" || editorMode === "code") && (
@@ -615,35 +607,6 @@ export function CodeEditor({
           )}
         </PanelGroup>
       </div>
-
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={handleCloseContextMenu}
-        >
-          <button
-            className={`w-full px-4 py-1.5 text-sm text-left transition-colors ${
-              theme === "light"
-                ? "text-gray-700 bg-white hover:bg-gray-50"
-                : "text-white hover:bg-zinc-700"
-            }`}
-            onClick={() => handleRenameTab(contextMenu.id)}
-          >
-            Rename
-          </button>
-          <button
-            className={`w-full px-4 py-1.5 text-sm text-left transition-colors ${
-              theme === "light"
-                ? "text-gray-700 bg-white hover:bg-gray-50"
-                : "text-white hover:bg-zinc-700"
-            }`}
-            onClick={downloadActiveFile}
-          >
-            Download
-          </button>
-        </ContextMenu>
-      )}
     </div>
   );
 }

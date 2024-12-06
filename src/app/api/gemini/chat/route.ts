@@ -30,8 +30,6 @@ Rules:
 - DO NOT comment unrelated code parts
 - Write comments in Vietnamese, keep them concise and clear
 - Place comments right before the code that needs explanation
-- Use // for short comments
-- Use /* ... */ for detailed comments
 - MUST return the entire original code
 - DO NOT modify the original code
 

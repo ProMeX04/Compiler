@@ -1,19 +1,19 @@
-import React, { memo, useCallback, useState } from "react";
-import { toast } from 'react-hot-toast'; // Sửa import
+import React, { memo, useCallback, useState, useEffect, useRef } from "react";
+import { toast } from 'react-hot-toast'; 
 import {
   FaSun,
   FaMoon,
   FaPlay,
   FaSpinner,
-  FaExpand,
   FaBars,
   FaUser,
-  FaVial,
-  FaCog,
-  FaBug,
-  FaMagic,
-  FaPaperPlane,
+  FaCode, 
+  FaFlask,
+  FaExpandAlt, 
+  FaWrench,
+  FaBroom, 
 } from "react-icons/fa";
+import { RiAiGenerate, RiSendPlaneFill } from 'react-icons/ri';
 import { useTheme } from "@/app/contexts/ThemeContext";
 import {
   LANGUAGE_CONFIGS,
@@ -21,8 +21,9 @@ import {
 } from "@/app/config/languagesConfig/categories";
 import { useFirebaseAuth } from "@/app/hooks/useFirebaseAuth";
 import { LoginModal } from "@/app/components/LoginModal";
-import { useRef, useEffect } from "react";
 import Image from "next/image";
+import { create } from 'zustand';
+import Modal from 'react-modal';
 
 const BUTTON_BASE =
   "flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-md transition-all duration-200";
@@ -109,6 +110,23 @@ interface EditorHeaderProps {
   isChatting: boolean;
 }
 
+interface StoreState {
+  message: string;
+  isAskingAI: boolean;
+}
+
+interface StoreActions {
+  setMessage: (message: string) => void;
+  setIsAskingAI: (isAskingAI: boolean) => void;
+}
+
+const useStore = create<StoreState & StoreActions>((set) => ({
+  message: '',
+  setMessage: (message) => set({ message }),
+  isAskingAI: false,
+  setIsAskingAI: (isAskingAI) => set({ isAskingAI }),
+}));
+
 export const EditorHeader = memo(function EditorHeader({
   editorMode,
   isCompiling,
@@ -130,13 +148,26 @@ export const EditorHeader = memo(function EditorHeader({
   const { theme, toggleTheme } = useTheme();
   const { user } = useFirebaseAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [loginModalPosition, setLoginModalPosition] = useState({
-    top: 0,
-    left: 0,
-  });
   const loginButtonRef = useRef<HTMLButtonElement>(null);
-  const [message, setMessage] = useState('');
-  const [isAskingAI, setIsAskingAI] = useState(false);
+  const { message, setMessage, isAskingAI, setIsAskingAI } = useStore();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Try different possible root elements
+      const possibleRootElements = ['#root', '#__next', 'body'];
+      for (const selector of possibleRootElements) {
+        try {
+          const element = document.querySelector(selector);
+          if (element) {
+            Modal.setAppElement(element as HTMLElement);
+            break;
+          }
+        } catch {
+          console.warn(`Failed to set app element with selector: ${selector}`);
+        }
+      }
+    }
+  }, []);
 
   const handleRunClick = useCallback(() => {
     if (editorMode === "editor") {
@@ -146,13 +177,6 @@ export const EditorHeader = memo(function EditorHeader({
   }, [editorMode, onEditorModeChange, onCompileAndRun]);
 
   const handleUserIconClick = () => {
-    if (loginButtonRef.current) {
-      const rect = loginButtonRef.current.getBoundingClientRect();
-      setLoginModalPosition({
-        top: rect.bottom + 5,
-        left: Math.max(10, rect.right - 320), 
-      });
-    }
     setIsLoginModalOpen(true);
   };
 
@@ -162,7 +186,6 @@ export const EditorHeader = memo(function EditorHeader({
 
     setIsAskingAI(true);
     try {
-      // Sử dụng onChat callback được truyền từ props
       await onChat(message);
     } catch (error) {
       console.error('Chat error:', error);
@@ -240,39 +263,97 @@ export const EditorHeader = memo(function EditorHeader({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Analyze button - use debug icon */}
+          {/* AI Features Group */}
           <HeaderButton
             onClick={onAnalyzeCode}
             disabled={isCompiling || isAnalyzing}
             title="Analyze Code (Alt+Shift+A)"
             className={`${BUTTON_INACTIVE(theme)}`}
           >
-            {isAnalyzing ? (
-              <FaSpinner className="animate-spin w-3 h-3" />
-            ) : (
-              <FaBug
-                className="w-3 h-3"
-                style={{ color: theme === "light" ? "#ec4899" : "#f472b6" }}
-              />
-            )}
+            <div className="flex items-center gap-1.5">
+              {isAnalyzing ? (
+                <FaSpinner className="animate-spin w-3 h-3" />
+              ) : (
+                <>
+                  <FaWrench
+                    className="w-3 h-3"
+                    style={{ color: theme === "light" ? "#ec4899" : "#f472b6" }}
+                  />
+                  <span>Analyze</span>
+                </>
+              )}
+            </div>
           </HeaderButton>
 
-          {/* Format button - use magic wand icon */}
+          {/* Format button */}
           <HeaderButton
             onClick={onFormatCode}
             disabled={isCompiling || isFormatting} // Disable when formatting
             title="Format Code (Alt+Shift+F)"
             className={`${BUTTON_INACTIVE(theme)}`}
           >
-            {isFormatting ? (
-              <FaSpinner className="animate-spin w-3 h-3" />
-            ) : (
-              <FaMagic
-                className="w-3 h-3"
-                style={{ color: theme === "light" ? "#8b5cf6" : "#a78bfa" }}
-              />
-            )}
+            <div className="flex items-center gap-1.5">
+              {isFormatting ? (
+                <FaSpinner className="animate-spin w-3 h-3" />
+              ) : (
+                <>
+                  <FaBroom
+                    className="w-3 h-3"
+                    style={{ color: theme === "light" ? "#8b5cf6" : "#a78bfa" }}
+                  />
+                  <span>Format</span>
+                </>
+              )}
+            </div>
           </HeaderButton>
+
+          <form onSubmit={handleAskAI} className="flex items-center">
+            <div className="relative group w-64">
+              <div className={`absolute left-2 top-1/2 -translate-y-1/2 transition-colors ${
+                theme === 'light'
+                  ? 'text-gray-400 group-hover:text-blue-400'
+                  : 'text-gray-500 group-hover:text-blue-500'
+              }`}>
+                <RiAiGenerate className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Ask AI about code..."
+                className={`w-full pl-8 pr-8 py-1.5 text-xs rounded-md transition-all duration-200 ${
+                  theme === 'light' 
+                    ? 'bg-gray-50/80 backdrop-blur border border-gray-200 placeholder-gray-400 hover:border-blue-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100' 
+                    : 'bg-zinc-800/30 backdrop-blur border border-zinc-700 placeholder-gray-500 hover:border-blue-500/50 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20'
+                } outline-none`}
+                disabled={isAskingAI}
+              />
+              <button
+                type="submit"
+                disabled={isAskingAI || !message.trim()}
+                className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-all duration-200 ${
+                  message.trim() 
+                    ? theme === 'light'
+                      ? 'text-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                      : 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10'
+                    : theme === 'light'
+                      ? 'text-gray-300'
+                      : 'text-gray-600'
+                }`}
+                title="Ask AI"
+              >
+                {isAskingAI ? (
+                  <FaSpinner className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RiSendPlaneFill 
+                    className={`w-3.5 h-3.5 transform transition-all duration-200 ${
+                      message.trim() ? 'translate-x-0 opacity-100' : '-translate-x-1 opacity-50'
+                    }`}
+                  />
+                )}
+              </button>
+            </div>
+          </form>
 
           <HeaderButton
             onClick={handleRunClick}
@@ -329,19 +410,19 @@ export const EditorHeader = memo(function EditorHeader({
             {[
               {
                 mode: "code",
-                icon: FaCog, // Thay đổi sang icon cấu hình
+                icon: FaCode, // Changed from FaCog to FaCode
                 label: "Code",
                 color: theme === "light" ? "#3b82f6" : "#60a5fa",
               },
               {
                 mode: "test",
-                icon: FaVial, // Thay đổi sang icon test tube
+                icon: FaFlask, // Changed from FaVial to FaFlask
                 label: "Test",
                 color: theme === "light" ? "#8b5cf6" : "#a78bfa",
               },
               {
                 mode: "editor",
-                icon: FaExpand,
+                icon: FaExpandAlt, // Changed from FaExpand to FaExpandAlt
                 label: "Full",
                 color: theme === "light" ? "#f59e0b" : "#fbbf24",
               }
@@ -366,66 +447,47 @@ export const EditorHeader = memo(function EditorHeader({
 
         {/* Right section */}
         <div className="flex items-center gap-2">
-          <form onSubmit={handleAskAI} className="flex items-center gap-2">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Ask AI about code..."
-              className={`w-64 p-1 text-xs rounded-md ${
-                theme === 'light' 
-                  ? 'bg-gray-50 border border-gray-200' 
-                  : 'bg-zinc-800 border border-zinc-700'
-              }`}
-              disabled={isAskingAI}
-            />
-            <button
-              type="submit"
-              disabled={isAskingAI}
-              className={`p-1 rounded-md ${BUTTON_INACTIVE(theme)}`}
-              title="Ask AI"
-            >
-              {isAskingAI ? (
-                <FaSpinner className="w-3 h-3 animate-spin" />
-              ) : (
-                <FaPaperPlane className="w-3 h-3" />
-              )}
-            </button>
-          </form>
+          <div className="h-5 w-[1px] mx-1 opacity-20 bg-current" />
           
+          {/* Theme toggle button với hiệu ứng mới */}
           <HeaderButton
             onClick={toggleTheme}
-            className={`${BUTTON_INACTIVE(theme)} hover:rotate-90 duration-300`}
+            className={`${BUTTON_INACTIVE(theme)} hover:rotate-[360deg] duration-500`}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
             {theme === "dark" ? (
-              <FaSun size={11} style={{ color: "#fbbf24" }} />
+              <FaSun size={11} className="text-amber-400" />
             ) : (
-              <FaMoon size={11} style={{ color: "#6366f1" }} />
+              <FaMoon size={11} className="text-indigo-400" />
             )}
           </HeaderButton>
 
+          {/* User button với hiệu ứng mới */}
           <HeaderButton
             ref={loginButtonRef}
             onClick={handleUserIconClick}
-            className={`${BUTTON_INACTIVE(
-              theme
-            )} p-1.5 flex items-center justify-center gap-1.5`}
+            className={`${BUTTON_INACTIVE(theme)} p-1.5 hover:ring-2 ${
+              theme === 'light' 
+                ? 'hover:ring-blue-100' 
+                : 'hover:ring-blue-500/20'
+            }`}
             title="User Account"
           >
             {user?.photoURL ? (
-              <Image
-                src={user.photoURL}
-                alt="Profile"
-                width={24}
-                height={24}
-                className="rounded-full w-6 h-6 object-cover"
-              />
+              <div className="relative rounded-full overflow-hidden w-6 h-6 ring-2 ring-white/10">
+                <Image
+                  src={user.photoURL}
+                  alt="Profile"
+                  width={24}
+                  height={24}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             ) : (
-              <>
-                <FaUser size={14} />
-                {!user && <span className="text-xs">Login</span>}
-              </>
+              <div className="flex items-center gap-1.5">
+                <FaUser size={12} />
+                {!user && <span className="text-xs font-medium">Login</span>}
+              </div>
             )}
           </HeaderButton>
         </div>
@@ -435,7 +497,6 @@ export const EditorHeader = memo(function EditorHeader({
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
-        position={loginModalPosition}
       />
     </div>
   );
