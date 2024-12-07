@@ -12,6 +12,7 @@ import {
   FaExpandAlt, 
   FaWrench,
   FaBroom, 
+  FaComments,
 } from "react-icons/fa";
 import { RiAiGenerate, RiSendPlaneFill } from 'react-icons/ri';
 import { useTheme } from "@/app/contexts/ThemeContext";
@@ -24,6 +25,7 @@ import { LoginModal } from "@/app/components/LoginModal";
 import Image from "next/image";
 import { create } from 'zustand';
 import Modal from 'react-modal';
+import ChatBox from './ChatBox';
 
 const BUTTON_BASE =
   "flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-md transition-all duration-200";
@@ -150,6 +152,7 @@ export const EditorHeader = memo(function EditorHeader({
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const loginButtonRef = useRef<HTMLButtonElement>(null);
   const { message, setMessage, isAskingAI, setIsAskingAI } = useStore();
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -443,6 +446,18 @@ export const EditorHeader = memo(function EditorHeader({
               </HeaderButton>
             ))}
           </div>
+
+          {/* Add Chat button */}
+          <HeaderButton
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className={`${BUTTON_INACTIVE(theme)}`}
+            title="Community Chat"
+          >
+            <FaComments className="w-3 h-3" 
+              style={{ color: theme === "light" ? "#8b5cf6" : "#a78bfa" }}
+            />
+            <span>Chat</span>
+          </HeaderButton>
         </div>
 
         {/* Right section */}
@@ -493,6 +508,8 @@ export const EditorHeader = memo(function EditorHeader({
         </div>
       </div>
 
+      {/* Add ChatBox component */}
+      <ChatBox isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
       <LoginModal
         isOpen={isLoginModalOpen}

@@ -20,6 +20,7 @@ import { addDuplicateLineCommand } from "../config/editor/monaco";
 import useTestingState from "@/app/hooks/useTestingState";
 import { toast } from "react-hot-toast";
 import { create } from 'zustand';
+import { getLanguageExtension } from "@/app/config/languagesConfig/categories";
 const MemoizedMonacoEditor = React.memo(MonacoEditor);
 const MemoizedTestPanel = React.memo(TestPanel);
 const MemoizedInputOutputPanel = React.memo(InputOutputPanel);
@@ -444,11 +445,24 @@ export function CodeEditor({
     async (newLanguage: string) => {
       if (!activeFileId) return;
 
-      const updatedFiles = files.map((file) =>
-        file.id === activeFileId
-          ? { ...file, language: newLanguage, isSynced: false }
-          : file
-      );
+      const updatedFiles = files.map((file) => {
+        if (file.id !== activeFileId) return file;
+        
+        // Get file name without extension
+        const baseName = file.name.split('.')[0];
+        // Get new extension
+        const newExtension = getLanguageExtension(newLanguage);
+        // Create new filename
+        const newName = `${baseName}.${newExtension}`;
+
+        return {
+          ...file,
+          name: newName,
+          language: newLanguage,
+          isSynced: false
+        };
+      });
+
       setFiles(updatedFiles);
 
       const updatedFile = updatedFiles.find((file) => file.id === activeFileId);

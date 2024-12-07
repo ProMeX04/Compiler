@@ -1,10 +1,14 @@
-import React, { useState } from "react"; 
+import React, { useState } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
-import { 
-  FaFileAlt, FaSave, FaPlay, FaKeyboard, 
-  FaClone, FaSearch, FaArrowDown,
+import {
+  FaFileAlt,
+  FaSave,
+  FaPlay,
+  FaKeyboard,
+  FaClone,
+  FaSearch,
+  FaArrowDown,
   FaCode,
-  FaChevronDown,
   FaCloud,
   FaBrain,
   FaRocket,
@@ -14,45 +18,51 @@ import {
   FaShareSquare,
   FaHistory,
   FaFileExport,
-  FaFileImport
+  FaFileImport,
+  FaRobot,
+  FaMagic,
+  FaComments,
+  FaBug,
+  FaTools,
 } from "react-icons/fa";
 
 const WelcomeGuide = () => {
   const { theme } = useTheme();
-  const [showShortcuts, setShowShortcuts] = useState(false);
-  const [showCloudGuide, setShowCloudGuide] = useState(false);
+  const [currentPage, setCurrentPage] = useState<
+    "welcome" | "shortcuts" | "cloud" | "ai"
+  >("welcome");
 
   const features = [
     {
       icon: <FaCode className="text-3xl" />,
       title: "Hỗ trợ nhiều ngôn ngữ",
-      desc: "Python, JavaScript, C++, Java và nhiều ngôn ngữ khác"
+      desc: "Python, JavaScript, C++, Java và nhiều ngôn ngữ khác",
     },
     {
       icon: <FaCloud className="text-3xl" />,
       title: "Đồng bộ đám mây",
-      desc: "Sao lưu, khôi phục và chia sẻ code của bạn"
+      desc: "Sao lưu, khôi phục và chia sẻ code của bạn",
     },
     {
       icon: <FaBrain className="text-3xl" />,
       title: "Suggestions",
-      desc: "Gợi ý code thông minh và tự động hoàn thành"
+      desc: "Gợi ý code thông minh và tự động hoàn thành",
     },
     {
       icon: <FaRocket className="text-3xl" />,
       title: "Chạy code trực tiếp",
-      desc: "Biên dịch và chạy code ngay trong trình duyệt"
+      desc: "Biên dịch và chạy code ngay trong trình duyệt",
     },
     {
       icon: <FaSync className="text-3xl" />,
       title: "Tự động lưu",
-      desc: "Không bao giờ mất code với tính năng tự động lưu"
+      desc: "Không bao giờ mất code với tính năng tự động lưu",
     },
     {
-      icon: <FaKeyboard className="text-3xl" />,
-      title: "Phím tắt hữu ích",
-      desc: "Tăng tốc coding với các phím tắt"
-    }
+      icon: <FaRobot className="text-3xl" />,
+      title: "AI Assistant",
+      desc: "Hỗ trợ phân tích, định dạng và tối ưu code",
+    },
   ];
 
   const cloudFeatures = [
@@ -64,19 +74,19 @@ const WelcomeGuide = () => {
         "Mở file cần lưu trữ",
         "Nhấn nút Sync (biểu tượng đám mây) trên thanh công cụ",
         "Hoặc sử dụng phím tắt Ctrl+S",
-        "File sẽ được lưu trữ an toàn trên cloud"
-      ]
+        "File sẽ được lưu trữ an toàn trên cloud",
+      ],
     },
     {
-      icon: <FaCloudDownloadAlt className="text-3xl" />, 
+      icon: <FaCloudDownloadAlt className="text-3xl" />,
       title: "Khôi phục từ đám mây",
       desc: "Khôi phục phiên bản trước đó của file từ cloud",
       steps: [
         "Mở file cần khôi phục",
         "Nhấn nút History (biểu tượng đồng hồ)",
         "Chọn phiên bản muốn khôi phục",
-        "File sẽ được khôi phục về trạng thái đã chọn"
-      ]
+        "File sẽ được khôi phục về trạng thái đã chọn",
+      ],
     },
     {
       icon: <FaShareSquare className="text-3xl" />,
@@ -86,8 +96,8 @@ const WelcomeGuide = () => {
         "Click chuột phải vào file muốn chia sẻ",
         "Chọn 'Share' từ menu",
         "Link chia sẻ sẽ được copy vào clipboard",
-        "Gửi link cho người muốn chia sẻ"
-      ]
+        "Gửi link cho người muốn chia sẻ",
+      ],
     },
     {
       icon: <FaHistory className="text-3xl" />,
@@ -97,8 +107,8 @@ const WelcomeGuide = () => {
         "Click vào biểu tượng History của file",
         "Xem danh sách các phiên bản trước",
         "So sánh các thay đổi giữa các phiên bản",
-        "Chọn phiên bản để khôi phục nếu cần"
-      ]
+        "Chọn phiên bản để khôi phục nếu cần",
+      ],
     },
     {
       icon: <FaFileExport className="text-3xl" />,
@@ -108,8 +118,8 @@ const WelcomeGuide = () => {
         "Click chuột phải vào file",
         "Chọn 'Download' từ menu",
         "Chọn vị trí lưu file",
-        "File sẽ được tải về máy"
-      ]
+        "File sẽ được tải về máy",
+      ],
     },
     {
       icon: <FaFileImport className="text-3xl" />,
@@ -119,9 +129,56 @@ const WelcomeGuide = () => {
         "Click nút Upload trên thanh công cụ",
         "Chọn file từ máy tính",
         "File sẽ được tải lên và mở trong editor",
-        "Tự động đồng bộ với cloud khi thay đổi"
-      ]
-    }
+        "Tự động đồng bộ với cloud khi thay đổi",
+      ],
+    },
+  ];
+
+  const aiFeatures = [
+    {
+      icon: <FaMagic className="text-3xl" />,
+      title: "Format Code",
+      desc: "Tự động định dạng code theo chuẩn",
+      steps: [
+        "Nhấn Alt + Shift + F hoặc nút Format trên thanh công cụ",
+        "Code sẽ được định dạng theo chuẩn của ngôn ngữ",
+        "Tự động căn lề và cấu trúc code",
+        "Tối ưu khoảng trắng và dấu ngắt dòng",
+      ],
+    },
+    {
+      icon: <FaBug className="text-3xl" />,
+      title: "Analyze Code",
+      desc: "Phân tích và đề xuất cải thiện code",
+      steps: [
+        "Nhấn Alt + Shift + A hoặc nút Analyze trên thanh công cụ",
+        "AI sẽ phân tích code của bạn",
+        "Nhận gợi ý về lỗi tiềm ẩn",
+        "Đề xuất cách tối ưu code",
+      ],
+    },
+    {
+      icon: <FaComments className="text-3xl" />,
+      title: "AI Chat",
+      desc: "Trao đổi với AI về code",
+      steps: [
+        "Nhấn nút Chat trên thanh công cụ",
+        "Đặt câu hỏi về code của bạn",
+        "Nhận phản hồi và giải thích từ AI",
+        "AI sẽ gợi ý cách cải thiện code",
+      ],
+    },
+    {
+      icon: <FaTools className="text-3xl" />,
+      title: "Code Refactor",
+      desc: "Tái cấu trúc và tối ưu code",
+      steps: [
+        "Chọn đoạn code cần tối ưu",
+        "Yêu cầu AI phân tích và đề xuất",
+        "Xem preview thay đổi được đề xuất",
+        "Áp dụng các thay đổi được chọn",
+      ],
+    },
   ];
 
   const shortcuts = [
@@ -132,16 +189,20 @@ const WelcomeGuide = () => {
         { icon: <FaSave />, key: "Ctrl + S", desc: "Lưu file" },
         { icon: <FaPlay />, key: "Ctrl + B", desc: "Chạy code" },
         { icon: <FaCode />, key: "Ctrl + /", desc: "Comment/Uncomment" },
-      ]
+      ],
     },
     {
       title: "Di chuyển & Chọn",
       items: [
         { icon: <FaArrowDown />, key: "Ctrl + G", desc: "Đi đến dòng" },
         { icon: <FaKeyboard />, key: "Ctrl + D", desc: "Chọn từ tiếp theo" },
-        { icon: <FaKeyboard />, key: "Ctrl + Shift + L", desc: "Chọn tất cả từ giống nhau" },
-        { icon: <FaKeyboard />, key: "Alt + Click", desc: "Thêm con trỏ" }
-      ]
+        {
+          icon: <FaKeyboard />,
+          key: "Ctrl + Shift + L",
+          desc: "Chọn tất cả từ giống nhau",
+        },
+        { icon: <FaKeyboard />, key: "Alt + Click", desc: "Thêm con trỏ" },
+      ],
     },
     {
       title: "Chỉnh sửa nâng cao",
@@ -149,40 +210,56 @@ const WelcomeGuide = () => {
         { icon: <FaClone />, key: "Alt + ↑/↓", desc: "Di chuyển dòng" },
         { icon: <FaClone />, key: "Alt + Shift + ↑/↓", desc: "Nhân đôi dòng" },
         { icon: <FaKeyboard />, key: "Ctrl + [", desc: "Thụt lề trái" },
-        { icon: <FaKeyboard />, key: "Ctrl + ]", desc: "Thụt lề phải" }
-      ]
+        { icon: <FaKeyboard />, key: "Ctrl + ]", desc: "Thụt lề phải" },
+      ],
     },
     {
       title: "Tìm kiếm & Thay thế",
       items: [
         { icon: <FaSearch />, key: "Ctrl + F", desc: "Tìm kiếm" },
         { icon: <FaSearch />, key: "Ctrl + H", desc: "Thay thế" },
-        { icon: <FaSearch />, key: "Ctrl + Shift + F", desc: "Tìm trong tất cả file" },
-        { icon: <FaKeyboard />, key: "F3", desc: "Tìm tiếp theo" }
-      ]
+        {
+          icon: <FaSearch />,
+          key: "Ctrl + Shift + F",
+          desc: "Tìm trong tất cả file",
+        },
+        { icon: <FaKeyboard />, key: "F3", desc: "Tìm tiếp theo" },
+      ],
     },
     {
       title: "Code Folding",
       items: [
-        { icon: <FaKeyboard />, key: "Ctrl + Shift + [", desc: "Thu gọn vùng code" },
-        { icon: <FaKeyboard />, key: "Ctrl + Shift + ]", desc: "M�� rộng vùng code" },
-        { icon: <FaKeyboard />, key: "Ctrl + K Ctrl + 0", desc: "Thu gọn tất cả" },
-        { icon: <FaKeyboard />, key: "Ctrl + K Ctrl + J", desc: "Mở rộng tất cả" }
-      ]
-    }
+        {
+          icon: <FaKeyboard />,
+          key: "Ctrl + Shift + [",
+          desc: "Thu gọn vùng code",
+        },
+        {
+          icon: <FaKeyboard />,
+          key: "Ctrl + Shift + ]",
+          desc: "Mở rộng vùng code",
+        },
+        {
+          icon: <FaKeyboard />,
+          key: "Ctrl + K Ctrl + 0",
+          desc: "Thu gọn tất cả",
+        },
+        {
+          icon: <FaKeyboard />,
+          key: "Ctrl + K Ctrl + J",
+          desc: "Mở rộng tất cả",
+        },
+      ],
+    },
   ];
 
-  return (
-    <div className={`h-full overflow-y-auto ${
-      theme === "light" ? "bg-white text-gray-800" : "bg-[#1e1e1e] text-gray-300"
-    }`}>
-      <div className="flex flex-col items-center p-6 space-y-8">
-        <div className="space-y-4">
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-transparent bg-clip-text">
-            Chào mừng đến với Code Editor
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
+  const pages = {
+    welcome: (
+      <div className="space-y-8 animate-fadeIn">
+        <h2 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-transparent bg-clip-text">
+          Chào mừng đến với Code Editor
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
             <div
               key={index}
@@ -192,11 +269,15 @@ const WelcomeGuide = () => {
                   : "bg-gray-800/50 hover:bg-gray-800"
               }`}
             >
-              <div className={`mb-4 ${
-                index % 3 === 0 ? "text-blue-500" :
-                index % 3 === 1 ? "text-purple-500" :
-                "text-pink-500"
-              }`}>
+              <div
+                className={`mb-4 ${
+                  index % 3 === 0
+                    ? "text-blue-500"
+                    : index % 3 === 1
+                    ? "text-purple-500"
+                    : "text-pink-500"
+                }`}
+              >
                 {feature.icon}
               </div>
               <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
@@ -204,102 +285,191 @@ const WelcomeGuide = () => {
             </div>
           ))}
         </div>
-
-        <button
-          onClick={() => setShowCloudGuide(!showCloudGuide)}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:opacity-90 transform transition hover:-translate-y-0.5"
-        >
-          <span>{showCloudGuide ? "Ẩn hướng dẫn cloud" : "Xem hướng dẫn cloud"}</span>
-          <FaChevronDown className={`transform transition-transform ${showCloudGuide ? "rotate-180" : ""}`} />
-        </button>
-
-        {showCloudGuide && (
-          <div className="w-full max-w-6xl space-y-8 animate-fadeIn">
-            <h3 className="text-2xl font-bold text-center bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
-              Hướng Dẫn Tính Năng Cloud
+      </div>
+    ),
+    shortcuts: (
+      <div className="space-y-8 animate-fadeIn">
+        <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-green-500 to-green-600 text-transparent bg-clip-text">
+          Phím tắt hữu ích
+        </h2>
+        {shortcuts.map((group, groupIndex) => (
+          <div key={groupIndex} className="space-y-4">
+            <h3
+              className={`text-xl font-semibold ${
+                theme === "light" ? "text-gray-700" : "text-gray-300"
+              }`}
+            >
+              {group.title}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {cloudFeatures.map((feature, index) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {group.items.map((shortcut, index) => (
                 <div
                   key={index}
-                  className={`p-6 rounded-lg transition-all hover:scale-105 ${
+                  className={`flex items-center space-x-4 p-4 rounded-lg transition-transform hover:scale-105 ${
                     theme === "light"
-                      ? "bg-gray-50 hover:bg-gray-100 shadow-md"
-                      : "bg-gray-800/50 hover:bg-gray-800 shadow-lg"
+                      ? "bg-gray-50 hover:bg-gray-100"
+                      : "bg-gray-800/50 hover:bg-gray-800"
                   }`}
                 >
-                  <div className={`flex items-center gap-4 mb-4`}>
-                    <div className="text-blue-500">{feature.icon}</div>
-                    <div>
-                      <h4 className="text-lg font-semibold">{feature.title}</h4>
-                      <p className="text-sm opacity-80">{feature.desc}</p>
-                    </div>
+                  <div
+                    className={`text-2xl ${
+                      groupIndex === 0
+                        ? "text-blue-500"
+                        : groupIndex === 1
+                        ? "text-purple-500"
+                        : "text-pink-500"
+                    }`}
+                  >
+                    {shortcut.icon}
                   </div>
-                  <div className="space-y-2">
-                    <p className="font-medium text-sm">Các bước thực hiện:</p>
-                    <ol className="list-decimal list-inside space-y-1">
-                      {feature.steps.map((step, idx) => (
-                        <li key={idx} className="text-sm opacity-80 pl-2">{step}</li>
-                      ))}
-                    </ol>
+                  <div className="flex-1 text-left">
+                    <kbd
+                      className={`px-2 py-1 rounded text-sm font-mono ${
+                        theme === "light"
+                          ? "bg-gray-200 text-gray-700"
+                          : "bg-gray-700 text-gray-300"
+                      }`}
+                    >
+                      {shortcut.key}
+                    </kbd>
+                    <p className="mt-1 text-sm opacity-80">{shortcut.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
-
-        <button
-          onClick={() => setShowShortcuts(!showShortcuts)}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:opacity-90 transform transition hover:-translate-y-0.5"
-        >
-          <span>{showShortcuts ? "Ẩn phím tắt" : "Xem phím tắt"}</span>
-          <FaChevronDown className={`transform transition-transform ${showShortcuts ? "rotate-180" : ""}`} />
-        </button>
-
-        {showShortcuts && (
-          <div className="grid grid-cols-1 gap-8 max-w-6xl animate-fadeIn">
-            {shortcuts.map((group, groupIndex) => (
-              <div key={groupIndex} className="space-y-4">
-                <h3 className={`text-xl font-semibold ${
-                  theme === "light" ? "text-gray-700" : "text-gray-300"
-                }`}>
-                  {group.title}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {group.items.map((shortcut, index) => (
-                    <div 
-                      key={index} 
-                      className={`flex items-center space-x-4 p-4 rounded-lg transition-transform hover:scale-105 ${
-                        theme === "light" 
-                          ? "bg-gray-50 hover:bg-gray-100" 
-                          : "bg-gray-800/50 hover:bg-gray-800"
-                      }`}
-                    >
-                      <div className={`text-2xl ${
-                        groupIndex === 0 ? "text-blue-500" : 
-                        groupIndex === 1 ? "text-purple-500" : 
-                        "text-pink-500"
-                      }`}>
-                        {shortcut.icon}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <kbd className={`px-2 py-1 rounded text-sm font-mono ${
-                          theme === "light" 
-                            ? "bg-gray-200 text-gray-700" 
-                            : "bg-gray-700 text-gray-300"
-                        }`}>
-                          {shortcut.key}
-                        </kbd>
-                        <p className="mt-1 text-sm opacity-80">{shortcut.desc}</p>
-                      </div>
-                    </div>
-                  ))}
+        ))}
+      </div>
+    ),
+    cloud: (
+      <div className="space-y-8 animate-fadeIn">
+        <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-blue-500 to-blue-600 text-transparent bg-clip-text">
+          Tính năng Cloud
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {cloudFeatures.map((feature, index) => (
+            <div
+              key={index}
+              className={`p-6 rounded-lg transition-all hover:scale-105 ${
+                theme === "light"
+                  ? "bg-gray-50 hover:bg-gray-100 shadow-md"
+                  : "bg-gray-800/50 hover:bg-gray-800 shadow-lg"
+              }`}
+            >
+              <div className={`flex items-center gap-4 mb-4`}>
+                <div className="text-blue-500">{feature.icon}</div>
+                <div>
+                  <h4 className="text-lg font-semibold">{feature.title}</h4>
+                  <p className="text-sm opacity-80">{feature.desc}</p>
                 </div>
               </div>
+              <div className="space-y-2">
+                <p className="font-medium text-sm">Các bước thực hiện:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  {feature.steps.map((step, idx) => (
+                    <li key={idx} className="text-sm opacity-80 pl-2">
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+    ai: (
+      <div className="space-y-8 animate-fadeIn">
+        <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-purple-500 to-pink-600 text-transparent bg-clip-text">
+          Tính năng AI
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {aiFeatures.map((feature, index) => (
+            <div
+              key={index}
+              className={`p-6 rounded-lg transition-all hover:scale-105 ${
+                theme === "light"
+                  ? "bg-gray-50 hover:bg-gray-100 shadow-md"
+                  : "bg-gray-800/50 hover:bg-gray-800 shadow-lg"
+              }`}
+            >
+              <div className={`flex items-center gap-4 mb-4`}>
+                <div className="text-purple-500">{feature.icon}</div>
+                <div>
+                  <h4 className="text-lg font-semibold">{feature.title}</h4>
+                  <p className="text-sm opacity-80">{feature.desc}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="font-medium text-sm">Các bước thực hiện:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  {feature.steps.map((step, idx) => (
+                    <li key={idx} className="text-sm opacity-80 pl-2">
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  };
+
+  const navigationItems = [
+    { id: "welcome", icon: <FaRocket />, label: "Trang chủ", color: "blue" },
+    {
+      id: "shortcuts",
+      icon: <FaKeyboard />,
+      label: "Phím tắt",
+      color: "green",
+    },
+    { id: "cloud", icon: <FaCloud />, label: "Cloud", color: "blue" },
+    { id: "ai", icon: <FaRobot />, label: "AI", color: "purple" },
+  ];
+
+  return (
+    <div
+      className={`h-full overflow-y-auto ${
+        theme === "light"
+          ? "bg-white text-gray-800"
+          : "bg-[#1e1e1e] text-gray-300"
+      }`}
+    >
+      <div className="flex flex-col h-full">
+        <div className="border-b border-gray-200 dark:border-gray-800">
+          <nav className="flex justify-center gap-2 p-2">
+            {navigationItems.map(({ id, icon, label, color }) => (
+              <button
+                key={id}
+                onClick={() => setCurrentPage(id as typeof currentPage)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200
+                  ${
+                    currentPage === id
+                      ? `bg-${color}-500 text-white`
+                      : theme === "light"
+                      ? "hover:bg-gray-100 text-gray-600"
+                      : "hover:bg-gray-800 text-gray-400"
+                  }
+                `}
+              >
+                <span
+                  className={`text-lg ${
+                    currentPage !== id && `text-${color}-500`
+                  }`}
+                >
+                  {icon}
+                </span>
+                <span className="font-medium">{label}</span>
+              </button>
             ))}
-          </div>
-        )}
+          </nav>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-6xl mx-auto">{pages[currentPage]}</div>
+        </div>
       </div>
     </div>
   );

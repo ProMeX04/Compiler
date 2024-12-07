@@ -119,7 +119,25 @@ export function useFirebaseAuth() {
     }
   };
 
+  const sendMessage = async (text: string) => {
+    if (!user) return;
+
+    try {
+      const messagesRef = collection(db, 'messages');
+      await addDoc(messagesRef, {
+        text,
+        userId: user.uid,
+        userName: user.displayName,
+        userPhoto: user.photoURL,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  };
+
   return { 
-    user, signInWithGoogle, logout, loading, fetchSharedFile, fetchExercises, createExercise 
+    user, signInWithGoogle, logout, loading, fetchSharedFile, fetchExercises, createExercise, sendMessage 
   };
 }

@@ -246,7 +246,8 @@ export const FileExplorer = React.memo(function FileExplorer({
       }`}
     >
       <div
-        className={`p-4 flex flex-col gap-3 border-b transition-all
+        onClick={() => onSelectFile("")} // Add this line
+        className={`p-4 flex flex-col gap-3 border-b transition-all cursor-pointer hover:opacity-80 // Add cursor-pointer and hover effect
           ${
             theme === "light"
               ? "bg-gradient-to-r from-white to-gray-50 text-gray-700 border-gray-100"
@@ -443,7 +444,7 @@ export const FileExplorer = React.memo(function FileExplorer({
 
       <input
         type="file"
-        accept=".js,.ts,.py,.cpp,.java,.cs"
+        accept=".js,.ts,.py,.cpp,.c,.java,.cs,.go,.rs,.php,.swift,.kt,.scala,.hs,.lua,.r"
         ref={fileInputRef}
         onChange={handleFileChange}
         style={{ display: "none" }}
