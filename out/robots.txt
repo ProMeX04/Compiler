@@ -1,0 +1,11 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /private
+Disallow: /admin
+
+# Host
+Host: https://compiler-pro.vercel.app
+
+# Sitemaps
+Sitemap: https://compiler-pro.vercel.app/sitemap.xml
