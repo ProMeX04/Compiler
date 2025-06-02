@@ -108,7 +108,7 @@ export function CodeEditor({
     };
 
     loadSharedFile();
-  }, [shareCode]);
+  }, [shareCode, accessSharedFile]);
 
   const { getLatestVersion } = usePistonRuntimes();
   const { 

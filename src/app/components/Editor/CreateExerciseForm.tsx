@@ -8,21 +8,32 @@ interface Example {
   explanation?: string;
 };
 
+// Define a more specific type for the exercise data
+export interface ExerciseFormData {
+  title: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  description: string;
+  inputFormat: string;
+  outputFormat: string;
+  examples: Example[];
+  parentId?: string;
+}
+
 export interface CreateExerciseFormProps {
-  onSubmit: (exercise: any) => Promise<void>;
+  onSubmit: (exercise: ExerciseFormData) => Promise<void>;
   onCancel: () => void;
 }
 
 export const CreateExerciseForm = ({ onSubmit, onCancel }: CreateExerciseFormProps) => {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ExerciseFormData>({
     title: '',
-    difficulty: 'Easy' as 'Easy' | 'Medium' | 'Hard',
+    difficulty: 'Easy',
     description: '',
     inputFormat: '',
     outputFormat: '',
-    examples: [{ input: '', output: '', explanation: '' }] as Example[],
-    parentId: '' // Optional parent exercise ID for creating sub-exercises
+    examples: [{ input: '', output: '', explanation: '' }],
+    parentId: ''
   });
 
   const addExample = () => {
@@ -36,6 +47,16 @@ export const CreateExerciseForm = ({ onSubmit, onCancel }: CreateExerciseFormPro
     setFormData(prev => ({
       ...prev,
       examples: prev.examples.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Helper function to update an example
+  const updateExample = (index: number, field: keyof Example, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      examples: prev.examples.map((ex, i) =>
+        i === index ? { ...ex, [field]: value } : ex
+      )
     }));
   };
 
