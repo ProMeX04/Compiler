@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💻 Online Code Editor
 
-## Getting Started
+A web-based code editor and execution environment inspired by VS Code. Write, edit, and run code in 50+ programming languages directly in the browser.
 
-First, run the development server:
+## ✨ Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Monaco Editor** — VS Code-grade code editing with syntax highlighting, IntelliSense, and theme support (One Dark)
+- **Multi-Language Execution** — Run code in 50+ languages (Python, C++, Java, JavaScript, Go, Rust, etc.) via the Piston API
+- **File Explorer** — Create, rename, delete, and organize files and folders with a tree-view sidebar
+- **Cloud Sync** — Save and load projects from Firebase Firestore with user authentication
+- **Context Menus** — Right-click context menus for file operations
+- **Resizable Panels** — Drag-to-resize editor, file explorer, and output panels
+- **Responsive UI** — Clean, modern interface with Tailwind CSS and Framer Motion animations
+
+## 🛠️ Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| **Next.js 15** | React framework with App Router |
+| **TypeScript** | Type-safe development |
+| **Monaco Editor** | Code editor (VS Code engine) |
+| **Piston API** | Remote code execution engine |
+| **Firebase** | Authentication & Firestore (cloud storage) |
+| **Zustand** | Lightweight state management |
+| **Tailwind CSS** | Utility-first styling |
+| **Framer Motion** | UI animations |
+| **React Query** | Server state management |
+
+## 📁 Project Structure
+
+```
+src/app/
+├── components/
+│   ├── CodeEditor.tsx       # Monaco editor wrapper
+│   ├── EditorHeader.tsx     # Toolbar (run, language select, save)
+│   ├── FileExplorer.tsx     # File tree sidebar
+│   ├── LoginModal.tsx       # Firebase auth modal
+│   └── Editor/              # Editor sub-components
+├── config/                  # Language configurations
+├── contexts/                # React context providers
+├── hooks/                   # Custom React hooks
+├── providers/               # App-level providers
+├── services/
+│   └── piston.ts            # Piston API client (execute & runtimes)
+├── types/                   # TypeScript type definitions
+├── utils/                   # Utility functions
+├── layout.tsx               # Root layout
+└── page.tsx                 # Main page
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Prerequisites
+- Node.js 18+
+- Firebase project (for auth & cloud sync)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Installation
 
-## Learn More
+```bash
+# Clone the repository
+git clone https://github.com/ProMeX04/Compiler.git
+cd Compiler
 
-To learn more about Next.js, take a look at the following resources:
+# Install dependencies
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Configure Firebase
+# Edit src/app/firebaseConfig.ts with your Firebase credentials
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Run development server
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000) to start coding.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📄 License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is for educational purposes.
